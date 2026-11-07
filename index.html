@@ -51,7 +51,7 @@ button{font:inherit;color:inherit}
 /* top bar */
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--desk);display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-block:12px;max-width:1240px;margin:0 auto}
 .brand{font-family:var(--f-display);font-weight:900;font-size:19px;letter-spacing:.06em;display:flex;align-items:center;gap:8px;white-space:nowrap;cursor:pointer;background:none;border:0;padding:0}
-.seal{width:26px;height:26px;border-radius:5px;background:var(--shu);color:var(--page);display:grid;place-items:center;font-size:13px;font-weight:900}
+.seal{width:28px;height:28px;display:block;flex:0 0 28px}.seal svg{width:100%;height:100%;display:block}
 .btn{border:1px solid var(--line);background:var(--page);border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--ink-2)}
 .search{position:relative;flex:1 1 260px;min-width:0;max-width:420px;margin-left:auto}
@@ -447,7 +447,7 @@ body{-webkit-tap-highlight-color:transparent}
 </style>
 
 <header class="bar">
-  <button class="brand" id="home"><span class="seal">京</span>京都旅行手帖</button>
+  <button class="brand" id="home"><span class="seal"><svg aria-hidden="true" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#C4432B"/><circle cx="67" cy="35" r="14" fill="#F3DDD5" opacity=".85"/><rect x="35" y="83" width="30" height="3" rx=".8" fill="#fff"/><rect x="41.5" y="77.0" width="17.0" height="6.6" fill="#fff"/><path d="M43.0 72.4 L57.0 72.4 Q65.0 76.1 75.0 74.5 Q71.0 77.2 65.0 77.0 L35.0 77.0 Q29.0 77.2 25.0 74.5 Q35.0 76.1 43.0 72.4Z" fill="#fff"/><rect x="42.5" y="67.0" width="15.0" height="6.0" fill="#fff"/><path d="M43.8 62.4 L56.2 62.4 Q63.2 66.1 72.0 64.5 Q68.5 67.2 63.2 67.0 L36.8 67.0 Q31.5 67.2 28.0 64.5 Q36.8 66.1 43.8 62.4Z" fill="#fff"/><rect x="43.5" y="57.6" width="12.9" height="5.4" fill="#fff"/><path d="M44.7 53.0 L55.3 53.0 Q61.4 56.7 69.0 55.1 Q66.0 57.8 61.4 57.6 L38.6 57.6 Q34.0 57.8 31.0 55.1 Q38.6 56.7 44.7 53.0Z" fill="#fff"/><rect x="44.6" y="48.8" width="10.9" height="4.8" fill="#fff"/><path d="M45.5 44.2 L54.5 44.2 Q59.6 47.9 66.0 46.3 Q63.4 49.0 59.6 48.8 L40.4 48.8 Q36.6 49.0 34.0 46.3 Q40.4 47.9 45.5 44.2Z" fill="#fff"/><rect x="45.6" y="40.6" width="8.8" height="4.2" fill="#fff"/><path d="M46.4 36.0 L53.6 36.0 Q57.8 39.7 63.0 38.1 Q60.9 40.8 57.8 40.6 L42.2 40.6 Q39.1 40.8 37.0 38.1 Q42.2 39.7 46.4 36.0Z" fill="#fff"/><rect x="49.1" y="20.999999999999993" width="1.8" height="15" fill="#fff"/><rect x="47.2" y="23.5" width="5.6" height="1" rx=".5" fill="#fff"/><rect x="47.4" y="25.5" width="5.2" height="1" rx=".5" fill="#fff"/><rect x="47.6" y="27.5" width="4.8" height="1" rx=".5" fill="#fff"/><rect x="47.8" y="29.5" width="4.4" height="1" rx=".5" fill="#fff"/><rect x="48.0" y="31.5" width="4.0" height="1" rx=".5" fill="#fff"/><rect x="48.2" y="33.5" width="3.6" height="1" rx=".5" fill="#fff"/><circle cx="50" cy="19.999999999999993" r="1.7" fill="#fff"/><rect x="16" y="86.6" width="68" height="1.6" rx=".8" fill="#fff" opacity=".8"/></svg></span>京都旅行手帖</button>
   <button class="btn" id="tocBtn">目录</button>
   <button class="btn" data-route="mytags">我的标签 <span class="mono" id="myCnt"></span></button><button class="btn" data-route="plan">旅行计划</button><button class="btn" id="assetBtn">图片素材</button>
   <div class="search">
@@ -3054,7 +3054,7 @@ function rightPage(n){
   return h+`<span class="folio">${pg(n.page*2)} / ${pg(total*2)}</span>`;
 }
 
-const PREFJA={kyoto:"京都",nara:"奈良",shiga:"滋賀",osaka:"大阪",hyogo:"兵庫"};
+const PREFJA={kyoto:"京都",nara:"奈良",shiga:"滋賀",osaka:"大阪",hyogo:"兵庫"},PREFZH={kyoto:"京都",nara:"奈良",shiga:"滋贺",osaka:"大阪",hyogo:"兵库"};
 function foodBlock(t){
   let h="";
   if(t.img&&CIMG[t.img]){const c=CIMG[t.img];h+=`<figure class="photo hero termimg${c.ai?" ai":""}"><img src="${c.src}" alt="${esc(t.n)}"><figcaption>${cap(c)}</figcaption></figure>`}
@@ -3068,7 +3068,7 @@ function foodInfo(t){let h="";
   const w=(t.w||[]).filter(x=>NODES[x]);
   if(w.length)h+=`<div class="sec">产地 · 在哪里吃</div><div class="cloud">${w.map(x=>`<button class="tag" data-go="${x}">${esc(NODES[x].n)}</button>`).join("")}</div>`;
   if(t.q){const kw=t.q,pj=PREFJA[t.pref]||"";
-    h+=`<div class="sec">搜索热门餐厅</div><p class="foodlinks"><a href="https://tabelog.com/${t.pref?t.pref+"/":""}rstLst/?sk=${encodeURIComponent(kw)}&SrtT=rt" target="_blank" rel="noopener">食べログ 评分排行 ↗</a><a href="https://www.google.com/maps/search/${encodeURIComponent(kw+" "+pj)}" target="_blank" rel="noopener">Google 地图 ↗</a><a href="https://www.google.com/search?q=${encodeURIComponent(kw+" "+pj+" 人気店")}" target="_blank" rel="noopener">网页搜索 ↗</a></p><p class="scnote">本书不推荐具体店家。评分和营业信息以各网站为准。</p>`}
+    h+=`<div class="sec">搜索热门餐厅</div><p class="foodlinks"><a href="https://tabelog.com/${t.pref?t.pref+"/":""}rstLst/?sk=${encodeURIComponent(kw)}&SrtT=rt" target="_blank" rel="noopener">食べログ 评分排行 ↗</a><a href="https://www.google.com/maps/search/${encodeURIComponent(kw+" "+pj)}" target="_blank" rel="noopener">Google 地图 ↗</a><a href="https://www.dianping.com/ai-search?keyword=${encodeURIComponent((PREFZH[t.pref]||"")+" "+t.n)}" target="_blank" rel="noopener">大众点评 ↗</a><a href="https://www.google.com/search?q=${encodeURIComponent(kw+" "+pj+" 人気店")}" target="_blank" rel="noopener">网页搜索 ↗</a></p><p class="scnote">本书不推荐具体店家。评分和营业信息以各网站为准。</p>`}
   return h;
 }
 function mlabel(x){const m=x>=13?12:Math.floor(x)>12?1:Math.floor(x);const d=x-Math.floor(x);return m+"月"+(d<0.34?"上旬":d<0.67?"中旬":"下旬")}
