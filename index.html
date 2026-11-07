@@ -425,6 +425,18 @@ body{-webkit-tap-highlight-color:transparent}
   .tabbar button[disabled]{opacity:.3}
   .tabbar button.on{color:var(--shu)}
   .tabbar .cnt{font-family:var(--f-mono);font-size:10px}
+  .pin.edgearrow{padding:2px 6px 3px 4px!important;border-radius:7px;box-shadow:0 1px 0 rgba(59,42,26,.15)}
+  .pin.edgearrow .needle{width:26px}
+  .pin.edgearrow span{font-size:10.5px;margin-left:2px}
+  .pin.edgearrow small{display:none}
+  .pin.edgearrow.down{gap:4px;padding:2px 7px 2px 5px!important}
+  .pin.edgearrow.down .needle{width:8px;height:18px}
+  .tabbar #tbPlan{position:relative;color:var(--shu);font-weight:700}
+  .tabbar #tbPlan::before{content:"";position:absolute;inset:4px 6px;border-radius:12px;background:var(--shu-soft);z-index:-1}
+  .tabbar #tbPlan b{color:var(--shu)}
+  .tabbar #tbPlan .badge{position:absolute;top:3px;right:calc(50% - 22px);min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--shu);color:#fff;font-size:10px;line-height:16px;font-family:var(--f-mono);font-weight:400}
+  .tabbar #tbPlan .badge:empty{display:none}
+  .tabbar{isolation:isolate}
   .swipehint{position:fixed;top:50%;z-index:24;width:44px;height:44px;margin-top:-22px;border-radius:50%;background:var(--page);box-shadow:var(--shadow);display:grid;place-items:center;font-size:22px;color:var(--shu);pointer-events:none;opacity:0;transition:opacity .15s}
 }
 @keyframes sheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
@@ -457,7 +469,7 @@ body{-webkit-tap-highlight-color:transparent}
   <button id="tbPrev" aria-label="上一页"><b>‹</b>上一页</button>
   <button id="tbToc"><b>☰</b>目录</button>
   <button id="tbSearch"><b>⌕</b>搜索</button>
-  <button id="tbPlan" data-route="plan"><b>▦</b>计划·标签</button>
+  <button id="tbPlan" data-route="plan"><b>▦</b>计划·标签<i class="badge" id="tbCnt"></i></button>
   <button id="tbNext" aria-label="下一页"><b>›</b>下一页</button>
 </nav>
 <div class="swipehint" id="swipehint"></div>
@@ -2755,7 +2767,7 @@ DEEP["ama-matanozoki"]=Object.assign(DEEP["ama-matanozoki"]||{},{px:69,py:13,sid
  ["nara",{img:"NARA"}],
  ["todaiji",{px:67,py:35}],["nara-park",{px:76,py:46}],["kasuga",{px:88,py:42}],["wakakusa",{px:85,py:58}],["kofukuji",{px:57,py:51}],["narahaku",{px:71,py:63}],
  ["heijo",{px:43,py:42}],["toshodaiji",{px:18,py:46}],["yakushiji",{px:20,py:70}],
- ["horyuji",{px:2.5,py:86,edge:{rot:-10,hint:"往西南 · JR「法隆寺」站"}}],["yoshino",{px:55,py:97,edge:{dir:"down",hint:"往南 · 近铁吉野线约 1 小时"}}],["dorogawa",{px:72,py:97,edge:{dir:"down",hint:"往南 · 天川村"}}],["totsukawa",{px:89,py:97,edge:{dir:"down",hint:"往南 · 奈良县最南端"}}],
+ ["horyuji",{px:2.5,py:86,edge:{rot:-10,hint:"往西南 · JR「法隆寺」站"}}],["yoshino",{px:40,py:97,edge:{dir:"down",hint:"往南 · 近铁约 1 小时"}}],["dorogawa",{px:61,py:97,edge:{dir:"down",hint:"往南 · 天川村"}}],["totsukawa",{px:86,py:97,edge:{dir:"down",hint:"往南 · 最南端"}}],
  ["morinokyoto",{img:"MORI"}],
  ["kotodaki",{px:35,py:47}],
  ["miyama",{px:68,py:27}],["joshokoji",{px:66,py:72}],["yunohana",{px:78,py:97,edge:{dir:"down",hint:"往东南 · 龟冈"}}],
@@ -2868,7 +2880,7 @@ const myAll=()=>{const s=new Set(PRESET);Object.values(MY).forEach(a=>a.forEach(
 const myCount=()=>Object.keys(MY).filter(k=>NODES[k]).length;
 function mineBlock(n){const cur=MY[n.id]||[];
   return `<div class="mine" id="mine"><span class="eyebrow">我的标签</span><div class="mrow">${myAll().map(x=>`<button class="mt${cur.includes(x)?" on":""}" data-mytoggle="${esc(x)}" aria-pressed="${cur.includes(x)}">${x==="收藏"?(cur.includes(x)?"♥ ":"♡ "):""}${esc(x)}</button>`).join("")}<span class="madd"><input id="mytag-input" maxlength="12" placeholder="新标签…" aria-label="添加自己的标签"><button class="mt plus" data-myadd="1">添加</button></span></div>${n.depth>=2?`<div class="mrow prow"><span class="eyebrow">旅行计划</span>${datesOf(n.id).map(d=>`<span class="mt on pd">第${dayNo(d)}天 · ${fmtD(d)}<button class="px" data-planrm="${d}" aria-label="从${fmtD(d)}移除">×</button></span>`).join("")}<span class="madd"><input type="date" id="plan-date" value="${esc(LASTDATE)}" aria-label="选择日期"><button class="mt plus" data-planadd="1">加入行程</button></span><button class="mt" data-route="plan">查看行程单 →</button></div>`:""}</div>`}
-function refreshMine(){const el=document.querySelector("#R .mine");const p=parseRoute(cur);if(el&&p.node)el.outerHTML=mineBlock(p.node);const c=document.getElementById("myCnt");if(c)c.textContent=myCount()}
+function refreshMine(){const el=document.querySelector("#R .mine");const p=parseRoute(cur);if(el&&p.node)el.outerHTML=mineBlock(p.node);const c=document.getElementById("myCnt");if(c)c.textContent=myCount();try{syncTab()}catch(e){}}
 let FILTER=null,FBAR_OPEN=false;
 const UPPER=n=>n.id==="root"||n.id==="kyoto";
 const tiered=n=>!UPPER(n)&&n.c.length>5;
@@ -3305,7 +3317,7 @@ loadStored();
 
 /* ===== 手机：底部导航 + 左右滑动翻页 ===== */
 function syncTab(){const tp=$("#tbPrev"),tn=$("#tbNext");if(!tp)return;tp.disabled=$("#prevBtn").disabled;tn.disabled=$("#nextBtn").disabled;
-  $("#tbPlan").classList.toggle("on",cur==="plan"||cur==="mytags")}
+  $("#tbPlan").classList.toggle("on",cur==="plan"||cur==="mytags");try{const c=myCount();$("#tbCnt").textContent=c?String(c):""}catch(e){}}
 if(!wide())$("#q").placeholder="搜索景点、标签";
 $("#tbPrev").onclick=()=>$("#prevBtn").click();$("#tbNext").onclick=()=>$("#nextBtn").click();
 $("#tbToc").onclick=()=>$("#tocBtn").click();
