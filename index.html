@@ -467,7 +467,7 @@ body{-webkit-tap-highlight-color:transparent}
 </main>
 
 <nav class="tabbar" id="tabbar" aria-label="手机导航">
-  <button id="tbPrev" aria-label="上一页"><b>‹</b>上一页</button>
+  <button id="tbPrev" aria-label="返回上一个浏览的页面"><b>‹</b>返回</button>
   <button id="tbToc"><b>☰</b>目录</button>
   <button id="tbSearch"><b>⌕</b>搜索</button>
   <button id="tbPlan" data-route="plan"><b>▦</b>计划·标签<i class="badge" id="tbCnt"></i></button>
@@ -3110,7 +3110,7 @@ function myPages(){
 function guidePages(){
   const L=`<div class="gcover"><span class="eyebrow">关西 · 京都及周边</span><div class="cover-t">京都旅行手帖</div><p class="cover-s">一本可以翻页、搜索、按兴趣筛选的旅行电子书。六个章节，从京都城中到日本海边，${ORDER.filter(n=>n.depth>=2).length} 个景点与看点。</p>
   <div class="cover-img"><img src="${IMGS.ROOT}" alt="京都及周边插画地图"></div><button class="btn pri" data-go="root">开始阅读 →</button></div>`;
-  const S=[["翻页与层级","书按「总览 → 章节 → 区域 → 景点 → 看点」一层层展开，每一层左边是地图，右边是介绍。点地图上的地名或右侧列表就能进入下一层。用两侧的 ‹ › 按钮或键盘 ← → 按书页顺序翻页，Backspace 回到上一层，顶部的路径可以随时跳回任何一层。"],
+  const S=[["翻页与层级","书按「总览 → 章节 → 区域 → 景点 → 看点」一层层展开，每一层左边是地图，右边是介绍。点地图上的地名或右侧列表就能进入下一层。用两侧的 ‹ › 按钮或键盘 ← → 按书页顺序翻页，Backspace 回到上一层，顶部的路径可以随时跳回任何一层。手机上底部的「‹ 返回」回到上一个看过的页面，左右滑动或「下一页」按书页顺序翻页。"],
   ["读懂地图","插画地图上的大号书法字是该区域的主推景点，小字是其他景点；地图边缘的罗盘箭头指向图外的景点，点击即可前往。示意地图上的编号与下方图例对应。"],
   ["按兴趣筛选","地图上方有一排标签，例如「赏枫」「日本战国」「免门票」。选一个标签，地图和列表只保留符合的景点，主推景点不符合时会变淡。在总览和京都页选标签，会显示每个区域有几处符合。翻页后筛选自动清除。"],
   ["搜索与标签索引","右上角搜索框可以搜景点名，也可以搜标签，按 / 键快速聚焦。打开「目录」，下方的「标签索引」按时令、历史文化、寺社、自然、吃喝玩乐分组，「历史」包含日本战国、明治维新、文学等子标签，点任意一行进入该标签的全部景点。"],
@@ -3199,7 +3199,8 @@ function edges(p){
   $("#prevBtn").disabled=i<0;$("#nextBtn").disabled=i<0||i>=total-1;
   syncTab();$("#prevBtn").title=i>0?"上一页："+ORDER[i-1].n:i===0?"上一页：使用说明":"";$("#nextBtn").title=i>=0&&i<total-1?"下一页："+ORDER[i+1].n:"";
 }
-function go(route,dir){if(route===cur)return;try{history.replaceState(null,"","#"+route)}catch(e){}if(location.hash!=="#"+route){suppress=true;location.hash=route}render(route,true,dir)}
+let HIST=[],BACKNAV=false;
+function go(route,dir){if(route===cur)return;if(!BACKNAV){HIST.push(cur);if(HIST.length>60)HIST.shift()}BACKNAV=false;try{history.replaceState(null,"","#"+route)}catch(e){}if(location.hash!=="#"+route){suppress=true;location.hash=route}render(route,true,dir)}
 let suppress=false;
 addEventListener("hashchange",()=>{if(suppress){suppress=false;return}render(location.hash.slice(1)||"guide")});
 const goNode=id=>go("n-"+id);
@@ -3317,10 +3318,10 @@ render(location.hash.slice(1)||"guide",false);refreshMine();
 loadStored();
 
 /* ===== 手机：底部导航 + 左右滑动翻页 ===== */
-function syncTab(){const tp=$("#tbPrev"),tn=$("#tbNext");if(!tp)return;tp.disabled=$("#prevBtn").disabled;tn.disabled=$("#nextBtn").disabled;
+function syncTab(){const tp=$("#tbPrev"),tn=$("#tbNext");if(!tp)return;tp.disabled=!HIST.some(r=>r!==cur);tn.disabled=$("#nextBtn").disabled;
   $("#tbPlan").classList.toggle("on",cur==="plan"||cur==="mytags");try{const c=myCount();$("#tbCnt").textContent=c?String(c):""}catch(e){}}
 if(!wide())$("#q").placeholder="搜索景点、标签";
-$("#tbPrev").onclick=()=>$("#prevBtn").click();$("#tbNext").onclick=()=>$("#nextBtn").click();
+$("#tbPrev").onclick=()=>{while(HIST.length&&HIST[HIST.length-1]===cur)HIST.pop();if(!HIST.length)return;BACKNAV=true;go(HIST.pop(),-1);syncTab()};$("#tbNext").onclick=()=>$("#nextBtn").click();
 $("#tbToc").onclick=()=>$("#tocBtn").click();
 $("#tbSearch").onclick=()=>{window.scrollTo({top:0});setTimeout(()=>$("#q").focus(),50)};
 $("#tbPlan").onclick=e=>{e.stopPropagation();go(cur==="plan"?"mytags":"plan")};
