@@ -3337,6 +3337,11 @@ $("#tbPlan").onclick=e=>{e.stopPropagation();go(cur==="plan"?"mytags":"plan")};
 </script>
 
 <noscript><div style="max-width:560px;margin:40px auto;padding:20px;font:16px/1.7 sans-serif;border:1px solid #ccc;border-radius:12px;background:#fff;color:#222">当前是预览模式，无法运行这本互动电子书。请用浏览器（Safari、Chrome、Edge）打开这个文件或网址。</div></noscript>
-<script>if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
+<script>if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});
+ const N=379,t=document.createElement("div");t.id="offst";t.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:40;background:#1F2B45;color:#fff;font:13px/1.4 system-ui,sans-serif;padding:7px 14px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:opacity .4s;pointer-events:none;white-space:nowrap";t.hidden=true;document.body.appendChild(t);
+ let shown=false;const ck=async()=>{try{if(!("caches" in window))return;const ks=(await caches.keys()).filter(k=>k.startsWith("kyoto-techo-"));let n=0;for(const k of ks){n=Math.max(n,(await (await caches.open(k)).keys()).length)}
+  let done=false;try{done=localStorage.getItem("kyoto-offline")===String(N)}catch(e){}
+  if(n>=N){if(!done){t.textContent="✓ 已下载完成，断网也能使用";t.hidden=false;setTimeout(()=>{t.style.opacity=0},4000);try{localStorage.setItem("kyoto-offline",String(N))}catch(e){}}return}
+  if(!done){t.hidden=false;t.textContent="正在下载离线内容，请保持联网…";}setTimeout(ck,2500)}catch(e){}};setTimeout(ck,1500)})}</script>
 </body>
 </html>
