@@ -174,6 +174,7 @@ figure.photo.hero figcaption{font-size:10px;color:var(--muted);padding:4px 2px 0
 .pvbar label,.apform label{font-size:12px;color:var(--muted);letter-spacing:.06em}
 .pvbar select,.apform select,.apform input[type=date],.apform input:not([type]),.apsave input{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--page);color:var(--ink);min-width:0}
 .aprow{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;min-width:0}.aprow.wrap{flex-wrap:wrap}.aprow input{flex:1}
+.apform .fchip{white-space:nowrap}
 .aptg{display:grid;grid-template-columns:5.5em minmax(0,1fr);gap:8px;align-items:start}.aptg>span{font-size:12px;color:var(--muted);padding-top:7px}
 .apday li.apsw{position:relative;transition:transform .2s ease}.apday li.apsw.open{transform:translateX(-84px)}
 .apday li.apsw .apx{position:absolute;top:0;bottom:0;right:-84px;width:76px;border:0;border-radius:6px;background:var(--shu);color:#fff;font-size:13px;cursor:pointer}
@@ -3015,8 +3016,19 @@ function apGenerate(){
     plan[d]=all.map(x=>x.id);
     const {rows,back,food,note}=apDayCalc(ordered,eve,B,pace,mode,rg);
     meta[d]={rows,back,food,note,rg};
-    if(!all.length)warn.push(`${fmtD(d)} 没有找到合适的景点，可以减少偏好标签或改成「密集」`);
   });
+  // 少换宿：同一大区的日子排在一起
+  const top1=d=>{const c={};(plan[d]||[]).forEach(id=>{let n=NODES[id];while(n&&n.depth>1)n=n.parent;if(n)c[n.id]=(c[n.id]||0)+1});const k=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];return k||""};
+  if(AP.few!==false){const free=days.filter(d=>!fixed[d]);const fixIdx=days.map((d,i)=>fixed[d]?i:-1).filter(i=>i>=0);
+    const kyLast=fixIdx.length&&fixIdx.reduce((a,b)=>a+b,0)/fixIdx.length>=(days.length-1)/2;
+    const grp={},order=[];free.forEach(d=>{const k=top1(d);if(!grp[k]){grp[k]=[];order.push(k)}grp[k].push(d)});
+    let seq=order.filter(k=>k&&k!=="kyoto");if(grp.kyoto)seq=kyLast?[...seq,"kyoto"]:["kyoto",...seq];if(grp[""])seq.push("");
+    const src=seq.flatMap(k=>grp[k]).map(d=>[plan[d],meta[d]]);free.forEach((d,i)=>{plan[d]=src[i][0];meta[d]=src[i][1]});
+    const lbl={kyoto:"京都",nara:"奈良",osaka:"大阪",shiga:"滋贺",uminokyoto:"海之京都",morinokyoto:"森之京都"};
+    let i=0;while(i<days.length){const k=top1(days[i]);let j=i;while(j+1<days.length&&top1(days[j+1])===k)j++;
+      if(k&&k!=="kyoto"&&j>i&&meta[days[i]])meta[days[i]].note=[`第${i+1}–${j+1}天都在${lbl[k]}，如果想少坐车，也可以这几晚住在${lbl[k]}`,...(meta[days[i]].note||[])];
+      i=j+1}}
+  days.forEach(d=>{if(!(plan[d]||[]).length)warn.push(`${fmtD(d)} 没有找到合适的景点，可以减少偏好标签或改成「密集」`)});
   const missMust=AP.must.filter(id=>!Object.values(plan).some(a=>a.includes(id)));
   missMust.forEach(id=>warn.push(`必去景点「${NODES[id].n}」没能排进去（交通时间过长），可以把节奏改成「密集」或手动加入`));
   return {days,plan,meta,base,baseWhy,warn,opt:JSON.parse(JSON.stringify(AP))};
@@ -3083,8 +3095,9 @@ function autoPages(){
   <div class="apform">
    <label>旅行日期</label><div class="aprow"><input type="date" id="ap-start" value="${esc(AP.start)}"><span>至</span><input type="date" id="ap-end" value="${esc(AP.end)}"></div>
    <label>住宿</label><div class="aprow"><select id="ap-base">${Object.entries(AP_BASES).map(([k,x])=>`<option value="${k}"${AP.base===k?" selected":""}>${esc(x.n)}</option>`).join("")}</select></div>
-   <label>节奏</label><div class="aprow">${opt({light:{n:"轻松 · 每天约 3 处"},mid:{n:"适中 · 4–5 处"},dense:{n:"密集 · 6–7 处"}},"pace")}</div>
+   <label>节奏</label><div class="aprow">${opt({light:{n:"轻松 · 3 处"},mid:{n:"适中 · 4–5 处"},dense:{n:"密集 · 6–7 处"}},"pace")}</div>
    <label>交通方式</label><div class="aprow">${opt({public:{n:"公共交通"},car:{n:"自驾"}},"mode")}</div>
+   <label>换宿</label><div class="aprow wrap"><button class="fchip${AP.few!==false?" on":""}" data-apfew="1" aria-pressed="${AP.few!==false}">${AP.few!==false?"✓ ":""}少换宿</button><span class="scnote" style="margin:0">选中后，京都、奈良、大阪等同一大区的日子会尽量排在一起</span></div>
    <label>想去的区域（可选 · 每点一次多排一天，点到上限后归零；没指定的日子自动安排）</label>${[["一级区域",AP_REG_TOP],["京都细分",AP_REG_SUB]].map(([g,o])=>`<div class="aptg"><span>${g}</span><div class="aprow wrap">${Object.entries(o).map(([k,n])=>{const c=AP.regions[k]||0;return `<button class="fchip${c?" on":""}" data-apreg="${k}">${esc(n)}${c?` · ${c} 天`:""}</button>`}).join("")}</div></div>`).join("")}
    <label>偏好（可多选，不选则以热门景点为主；时令类只在出行日期对得上时生效）</label>${AP_TAG_G.map(([g,ks])=>`<div class="aptg"><span>${g}</span><div class="aprow wrap">${ks.split(" ").map(tagChip).join("")}</div></div>`).join("")}
    <label>必去景点（可选）</label><div class="aprow"><input id="ap-must" list="ap-spots" placeholder="输入景点名…"><datalist id="ap-spots">${spots.map(id=>`<option value="${esc(NODES[id].n)}">`).join("")}</datalist><button class="mt plus" data-apmust="1">添加</button></div>
@@ -3191,6 +3204,7 @@ document.addEventListener("click",e=>{
   if(b=q("[data-plaaddid]")){const [d,id]=b.dataset.plaaddid.split("|");if(PLAN[d]&&!PLAN[d].includes(id)){const M=planCalc(d),ev=M.rows.find(r=>r.eve);const i=ev?PLAN[d].indexOf(ev.id):-1;if(i>=0)PLAN[d].splice(i,0,id);else PLAN[d].push(id);savePlan()}render(cur,false);return}
   if(b=q("[data-aprm]")){const [d,id]=b.dataset.aprm.split("|");AP_RES.plan[d]=AP_RES.plan[d].filter(x=>x!==id);apResched(d);render(cur,false);return}
   if(b=q("[data-apaddid]")){const [d,id]=b.dataset.apaddid.split("|");if(!AP_RES.plan[d].includes(id)){Object.keys(AP_RES.plan).forEach(k=>{if(k!==d&&AP_RES.plan[k].includes(id)){AP_RES.plan[k]=AP_RES.plan[k].filter(x=>x!==id);apResched(k)}});AP_RES.plan[d].push(id);apResched(d)}render(cur,false);return}
+  if(q("[data-apfew]")){AP.few=AP.few===false;apSave();render(cur,false);return}
   if(b=q("[data-apreg]")){const k=b.dataset.apreg,c=AP.regions[k]||0,mx=Math.min(k==="kyoto"?10:4,Math.max(1,apDays(AP.start,AP.end).length));if(c>=mx)delete AP.regions[k];else AP.regions[k]=c+1;apSave();render(cur,false);return}
   if(b=q("[data-apset]")){const [k,v]=b.dataset.apset.split("|");AP[k]=v;apSave();render(cur,false);return}
   if(q("[data-apmust]")){const v=($("#ap-must").value||"").trim();const id=Object.keys(PLANDATA).find(k=>NODES[k]&&NODES[k].n===v);if(id&&!AP.must.includes(id)){AP.must.push(id);apSave();render(cur,false)}return}
