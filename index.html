@@ -174,7 +174,7 @@ figure.photo.hero figcaption{font-size:10px;color:var(--muted);padding:4px 2px 0
 .pvbar label,.apform label{font-size:12px;color:var(--muted);letter-spacing:.06em}
 .pvbar select,.apform select,.apform input[type=date],.apform input:not([type]),.apsave input{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--page);color:var(--ink);min-width:0}
 .aprow{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;min-width:0}.aprow.wrap{flex-wrap:wrap}.aprow input{flex:1}
-.apform .fchip{white-space:nowrap}
+.apform .fchip{white-space:nowrap}.apio{align-items:center}.apio>span{font-size:13px;color:var(--ink-2);width:2.5em}.apio input[type=time]{width:7.5em;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--page);color:var(--ink);font:inherit}.apio select{flex:1;min-width:0}.apday li.mv span{color:var(--ink-2)}
 .aptg{display:grid;grid-template-columns:5.5em minmax(0,1fr);gap:8px;align-items:start}.aptg>span{font-size:12px;color:var(--muted);padding-top:7px}
 .apday li.apsw{position:relative;transition:transform .2s ease}.apday li.apsw.open{transform:translateX(-84px)}
 .apday li.apsw .apx{position:absolute;top:0;bottom:0;right:-84px;width:76px;border:0;border-radius:6px;background:var(--shu);color:#fff;font-size:13px;cursor:pointer}
@@ -2993,15 +2993,17 @@ function apGenerate(){
     const order=[];for(let j=0;j<want.length;j++){if(pi>=pref.length){warn.push(`日期不够，「${AP_REGIONS[want[j]]}」少排了 1 天`);continue}order.push([pref[pi++],want[j]])}
     order.sort((a,b)=>a[0]<b[0]?-1:1);const seen={};order.forEach(([d,r])=>{regDay[d]=r});}
   const KY=new Set(["kyoto",...Object.keys(AP_REG_SUB)]);const regSet=new Set(Object.values(regDay).filter(r=>!KY.has(r)));
+  const pace0=pace;
   days.forEach((d,di)=>{
+    const cx=apDayCtx(d,days,AP,B,pace0);const pace={...pace0,start:cx.start,budget:cx.budget,max:cx.max,night:cx.night};
     const list=[];let eve=null;
     (fixed[d]||[]).forEach(x=>{if(!S[x.id]||used.has(x.id))return;const night=x.eve||PLANDATA[x.id][3].includes("n");if(night&&!eve)eve={...S[x.id],ev:x.nm};else list.push({...S[x.id],ev:x.nm});used.add(x.id)});
     const rg=regDay[d]||"";
     const pool=()=>Object.values(S).filter(x=>!used.has(x.id)&&!reserved.has(x.id)&&!(PLANDATA[x.id][3].includes("x"))&&(rg?apRegion(x.id)===rg:!regSet.has(apRegion(x.id))||x.s>=1000&&!Object.values(regDay).includes(apRegion(x.id))));
     const tripCost=arr=>{if(!arr.length)return 0;let t=0,p=B;const o=apOrder(arr,B);o.forEach(x=>{t+=apTravel(p,x.g,mode,x.remote)+x.dur;p=x.g});return t+apTravel(p,B,mode,false)};
-    if(!list.length){let best=null;const P=pool();for(const x of P){if(x.dur<40&&x.s<1000)continue;const rt=apTravel(B,x.g,mode,x.remote)*2+x.dur;if(rt>pace.budget+(x.s>=400||(rg&&!KY.has(rg))?300:60))continue;const nb=P.filter(y=>y!==x&&!y.f.includes("v")&&!y.f.includes("n")&&apTravel(x.g,y.g,mode,y.remote)<=(mode==="car"?35:30)).map(y=>y.s).sort((a,b)=>b-a).slice(0,pace.max-1).reduce((a,b)=>a+b,0);const v=x.s+nb*0.6-rt*0.06-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
+    if(!list.length&&pace.max){let best=null;const P=pool();for(const x of P){if(x.dur<40&&x.s<1000)continue;const rt=apTravel(B,x.g,mode,x.remote)*2+x.dur;if(rt>pace.budget+(x.s>=400||(rg&&!KY.has(rg))?300:60))continue;const nb=P.filter(y=>y!==x&&!y.f.includes("v")&&!y.f.includes("n")&&apTravel(x.g,y.g,mode,y.remote)<=(mode==="car"?35:30)).map(y=>y.s).sort((a,b)=>b-a).slice(0,pace.max-1).reduce((a,b)=>a+b,0);const v=x.s+nb*0.6-rt*0.06-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
       if(best){list.push(best[1]);used.add(best[1].id)}}
-    const BD=pace.budget+(list.length?Math.max(0,Math.min(150,2*apTravel(B,list[0].g,mode,list[0].remote)-50)):0);
+    const BD=pace.budget+(list.length&&!cx.short?Math.max(0,Math.min(150,2*apTravel(B,list[0].g,mode,list[0].remote)-50)):0);
     let guard=0;while(list.length<pace.max&&guard++<40){const last=apOrder(list,B).slice(-1)[0]||{g:B};let best=null;
       for(const x of pool()){if(PLANDATA[x.id][3].includes("v")&&list.length&&!rg)continue;const c=tripCost([...list,x]);if(c>BD)continue;const near=Math.min(...list.map(y=>apTravel(y.g,x.g,mode,x.remote)));const fromA=apTravel(list[0].g,x.g,mode,x.remote);if(fromA>(mode==="car"?35:30))continue;const v=x.s-near*0.7-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
       if(!best)break;list.push(best[1]);used.add(best[1].id)}
@@ -3009,17 +3011,20 @@ function apGenerate(){
       for(const x of pool()){if(x.f.includes("v"))continue;const c=tripCost([...list,x]);if(c>BD)continue;const tt=apTravel(last.g,x.g,mode,x.remote);if(tt>30)continue;const v=x.s-tt*0.5-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
       if(!best)break;list.push(best[1]);used.add(best[1].id)}}
     const ordered0=apOrder(list,B);const ordered=ordered0.slice();{let g=0;const NO=new Set(["pontocho","takasegawa","dotonbori","kyoto-station"]);if(ordered.length>1&&NO.has(ordered[0].id))ordered.reverse();while(ordered.length>1&&NO.has(ordered[0].id)&&g++<5)ordered.push(ordered.shift())}
-    if(!eve&&(pace.night||T.includes("night"))&&ordered.length){const last=ordered[ordered.length-1];let best=null;
+    if(!eve&&(pace.night||T.includes("night")&&!cx.dep)&&ordered.length){const last=ordered[ordered.length-1];let best=null;
       for(const x of pool()){if(!PLANDATA[x.id][3].includes("n"))continue;const tt=apTravel(last.g,x.g,mode,false);if(tt>35)continue;const v=x.s-tt*0.3;if(!best||v>best[0])best=[v,x]}
+      if(best){eve=best[1];used.add(eve.id)}}
+    if(!eve&&!ordered.length&&cx.pre.length&&pace0.night&&cx.start<=19*60+30&&!cx.dep){let best=null;
+      for(const x of pool()){if(!PLANDATA[x.id][3].includes("n"))continue;const tt=apTravel(B,x.g,mode,false);if(tt>25)continue;const v=x.s-tt*0.5;if(!best||v>best[0])best=[v,x]}
       if(best){eve=best[1];used.add(eve.id)}}
     const all=[...ordered,...(eve?[eve]:[])];
     plan[d]=all.map(x=>x.id);
-    const {rows,back,food,note}=apDayCalc(ordered,eve,B,pace,mode,rg);
-    meta[d]={rows,back,food,note,rg};
+    const {rows,back,food,note,dep}=apDayCalc(ordered,eve,B,pace,mode,rg,cx);
+    meta[d]={rows,back,food,note,rg,dep};
   });
   // 少换宿：同一大区的日子排在一起
   const top1=d=>{const c={};(plan[d]||[]).forEach(id=>{let n=NODES[id];while(n&&n.depth>1)n=n.parent;if(n)c[n.id]=(c[n.id]||0)+1});const k=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];return k||""};
-  if(AP.few!==false){const free=days.filter(d=>!fixed[d]);const fixIdx=days.map((d,i)=>fixed[d]?i:-1).filter(i=>i>=0);
+  if(AP.few!==false){const free=days.filter((d,i)=>!fixed[d]&&!(i===0&&toMin(AP.arrT)!=null)&&!(i===days.length-1&&toMin(AP.depT)!=null));const fixIdx=days.map((d,i)=>fixed[d]?i:-1).filter(i=>i>=0);
     const kyLast=fixIdx.length&&fixIdx.reduce((a,b)=>a+b,0)/fixIdx.length>=(days.length-1)/2;
     const grp={},order=[];free.forEach(d=>{const k=top1(d);if(!grp[k]){grp[k]=[];order.push(k)}grp[k].push(d)});
     let seq=order.filter(k=>k&&k!=="kyoto");if(grp.kyoto)seq=kyLast?[...seq,"kyoto"]:["kyoto",...seq];if(grp[""])seq.push("");
@@ -3028,25 +3033,40 @@ function apGenerate(){
     let i=0;while(i<days.length){const k=top1(days[i]);let j=i;while(j+1<days.length&&top1(days[j+1])===k)j++;
       if(k&&k!=="kyoto"&&j>i&&meta[days[i]])meta[days[i]].note=[`第${i+1}–${j+1}天都在${lbl[k]}，如果想少坐车，也可以这几晚住在${lbl[k]}`,...(meta[days[i]].note||[])];
       i=j+1}}
-  days.forEach(d=>{if(!(plan[d]||[]).length)warn.push(`${fmtD(d)} 没有找到合适的景点，可以减少偏好标签或改成「密集」`)});
+  days.forEach((d,i)=>{if(!(plan[d]||[]).length&&!(i===0&&toMin(AP.arrT)!=null)&&!(i===days.length-1&&toMin(AP.depT)!=null))warn.push(`${fmtD(d)} 没有找到合适的景点，可以减少偏好标签或改成「密集」`)});
   const missMust=AP.must.filter(id=>!Object.values(plan).some(a=>a.includes(id)));
   missMust.forEach(id=>warn.push(`必去景点「${NODES[id].n}」没能排进去（交通时间过长），可以把节奏改成「密集」或手动加入`));
   return {days,plan,meta,base,baseWhy,warn,opt:JSON.parse(JSON.stringify(AP))};
 }
-function apDayCalc(ordered,eve,B,pace,mode,rg){
-    let t=pace.start,p=B,lunch=false;const rows=[];
+function apDayCalc(ordered,eve,B,pace,mode,rg,cx){
+    cx=cx||{pre:[],post:[]};let t=cx.start!=null?cx.start:pace.start,p=B,lunch=t>=14*60;const rows=[...(cx.pre||[])];
     ordered.forEach(x=>{const tr=apTravel(p,x.g,mode,x.remote);t+=tr;if(!lunch&&t>=12*60){rows.push({lunch:1,at:t});t+=60;lunch=true}t=Math.ceil(t/5)*5;rows.push({id:x.id,at:t,dur:x.dur,tr,ev:x.ev||""});t+=x.dur;p=x.g;
       if(!lunch&&t>=12*60+30){rows.push({lunch:1,at:t});t+=60;lunch=true}});
-    if(eve){const tr=apTravel(p,eve.g,mode,false);t=Math.max(t+tr,18*60);rows.push({id:eve.id,at:t,dur:eve.dur,tr,ev:eve.ev||"",eve:1});p=eve.g}
+    if(eve){const tr=apTravel(p,eve.g,mode,false);t=Math.ceil(Math.max(t+tr,18*60)/5)*5;rows.push({id:eve.id,at:t,dur:eve.dur,tr,ev:eve.ev||"",eve:1});p=eve.g}
     const back=apTravel(p,B,mode,false);
-    const all=[...ordered,...(eve?[eve]:[])];
+    const all=[...ordered,...(eve?[eve]:[])];const tight=cx.post&&cx.post.length&&t+back>cx.post[0].at;
+    rows.push(...(cx.post||[]));
     const idset=new Set();all.forEach(x=>{idset.add(x.id);let n=NODES[x.id];while(n&&n.depth>1){idset.add(n.id);n=n.parent}});
     const food=Object.entries(TERMS_).filter(([,tm])=>tm.k==="美食"&&(tm.w||[]).some(w=>idset.has(w))).map(([k])=>k).slice(0,3);
     const far=all.find(x=>(x.f||"").includes("v")&&km(B,x.g)>40);
     const note=[];if(far)note.push(`${NODES[far.id].n}离住处较远，建议当晚在当地过夜，次日再回来`);
     all.forEach(x=>{if(x.remote&&mode!=="car")note.push(`${NODES[x.id].n}公共交通班次较少，请提前查好时刻表`)});
     if(rg)note.unshift(`这一天专门安排「${AP_REGIONS[rg]}」`);
-    return {rows,back,food,note}}
+    if(tight)note.unshift("离开日时间偏紧，建议删掉一两个景点");
+    if(cx.pre&&cx.pre.length&&!ordered.length)note.unshift(eve?"到达日：入住后晚上在附近走走":"到达日：抵达后先入住休息");
+    return {rows,back,food,note,dep:cx.dep?1:0}}
+const AP_PLACES={kix:{n:"关西机场",air:1,t:{ky:90,os:55,na:90}},itm:{n:"伊丹机场",air:1,t:{ky:60,os:30,na:75}},kyotost:{n:"京都站（新干线）",t:{ky:20,os:45,na:50}},shinosaka:{n:"新大阪站（新干线）",t:{ky:35,os:20,na:60}}};
+const apZone=g=>km(g,[34.68,135.82])<12?"na":km(g,[34.69,135.50])<15?"os":"ky";
+const toMin=s=>{const m=/^(\d{1,2}):(\d{2})/.exec(s||"");return m?+m[1]*60+ +m[2]:null};
+function apDayCtx(d,days,o,B,pace){const c={start:pace.start,budget:pace.budget,max:pace.max,night:pace.night,pre:[],post:[],dep:0,short:0};
+  const z=apZone(B),arr=d===days[0]?toMin(o.arrT):null,dep=d===days[days.length-1]?toMin(o.depT):null;
+  if(arr!=null){const P=AP_PLACES[o.arrP]||AP_PLACES.kix,ex=P.air?60:10,tr=P.t[z];c.pre.push({mv:1,at:arr,txt:`抵达${P.n}${P.air?"（入境、取行李约 1 小时）":""}`});c.pre.push({mv:1,at:arr+ex,txt:`前往住处，约 ${tr} 分钟，寄存行李`});
+    const s=Math.ceil((arr+ex+tr+30)/5)*5;c.budget=Math.max(0,pace.start+pace.budget-Math.max(s,pace.start));c.start=Math.max(s,pace.start);c.short=1;if(arr+ex+tr>=19*60){c.budget=0}}
+  if(dep!=null){const P=AP_PLACES[o.depP]||AP_PLACES.kix,buf=P.air?120:20,tr=P.t[z];const L=Math.floor((dep-buf-tr)/5)*5,back=L-20;
+    c.post.push({mv:1,at:back,txt:"回住处取行李"});c.post.push({mv:1,at:L,txt:`出发前往${P.n}，约 ${tr} 分钟`});c.post.push({mv:1,at:dep,txt:`${P.air?"航班起飞（提前 2 小时到机场）":"列车出发"}`});
+    c.budget=Math.max(0,Math.min(c.budget,back-c.start));c.dep=1;c.short=1;c.night=back>=21*60?c.night:0;c.end=back}
+  if(c.budget<75){c.budget=0;c.max=0}else if(c.short)c.max=Math.max(1,Math.min(pace.max,Math.round(pace.max*c.budget/pace.budget+0.4)));
+  return c}
 const apMk=(id,ex)=>{const [la,lo,dur,f]=PLANDATA[id];return Object.assign({id,g:[la,lo],dur,f,remote:f.includes("r")},ex||{})};
 function apResched(d){const r=AP_RES;if(!r||!r.plan[d])return;const old=r.meta[d]||{rows:[]};const ex={};old.rows.forEach(x=>{if(x.id)ex[x.id]={ev:x.ev||"",eve:x.eve}});
   const pace=AP_PACE[r.opt.pace]||AP_PACE.mid,mode=r.opt.mode,B=AP_BASES[r.base].g;
@@ -3063,16 +3083,17 @@ function planCalc(d){const v=PV.v[PV.cur]||{},o=v.opt||{},pace=AP_PACE[o.pace]||
   const M=(v.meta||{})[d]||{};const eveIds=new Set((M.rows||[]).filter(r=>r.eve).map(r=>r.id));const evs={};(M.rows||[]).forEach(r=>{if(r.id&&r.ev)evs[r.id]=r.ev});
   const pts=(PLAN[d]||[]).map(id=>{let n=NODES[id],pd=null;while(n&&!(pd=PLANDATA[n.id]))n=n.parent;if(!pd)return null;const own=PLANDATA[id];return {id,g:[pd[0],pd[1]],dur:own?own[2]:30,f:own?own[3]:"",remote:pd[3].includes("r"),ev:evs[id]||""}}).filter(Boolean);
   let eve=null;if(pts.length>1&&eveIds.has(pts[pts.length-1].id))eve=pts.pop();
-  return Object.assign(apDayCalc(pts,eve,B,pace,mode,M.rg),{rg:M.rg})}
+  const cx=apDayCtx(d,planDates(),o,B,pace);
+  return Object.assign(apDayCalc(pts,eve,B,pace,mode,M.rg,cx),{rg:M.rg})}
 const liveMeta=()=>{const o={};planDates().forEach(d=>o[d]=planCalc(d));return o};
 const durTx=m=>m>=60?(m/60).toFixed(m%60?1:0)+" 小时":m+" 分钟";
 function planDayHtml(d){const M=planCalc(d),ids=PLAN[d],seen=new Set();const n=ids.length;
   const row=(id,r)=>{const k=ids.indexOf(id),N=NODES[id];seen.add(id);return `<li class="apsw${r&&r.eve?" eve":""}" data-apid="${id}" data-apd="${d}"><time>${r?hm(r.at):"—"}</time><span><button class="mylink" data-go="${id}"><b>${esc(N.n)}</b></button>${r&&r.ev?`<em class="apev">${esc(r.ev)}</em>`:""}<small>${r?`游览约 ${durTx(r.dur)} · 前往约 ${r.tr} 分钟${r.eve?" · 晚间":""}`:esc(N.folders.slice(0,-1).join(" › "))}</small></span><span class="pmv"><button data-planmv="${d}|${id}|-1" aria-label="上移"${k?"":" disabled"}>↑</button><button data-planmv="${d}|${id}|1" aria-label="下移"${k<n-1?"":" disabled"}>↓</button></span><button class="apx" data-planrm2="${d}|${id}" aria-label="删除">删除</button></li>`};
-  let h=`<ol class="apday pl">${M.rows.map(r=>r.lunch?`<li class="lunch"><time>${hm(r.at)}</time><span>午餐 · 约 1 小时</span></li>`:row(r.id,r)).join("")}${ids.filter(id=>!seen.has(id)).map(id=>row(id,null)).join("")}</ol>`;
+  let h=`<ol class="apday pl">${M.rows.map(r=>r.mv?`<li class="lunch mv"><time>${hm(r.at)}</time><span>${esc(r.txt)}</span></li>`:r.lunch?`<li class="lunch"><time>${hm(r.at)}</time><span>午餐 · 约 1 小时</span></li>`:row(r.id,r)).join("")}${ids.filter(id=>!seen.has(id)).map(id=>row(id,null)).join("")}</ol>`;
   h+=`<div class="apadd"><input data-plaaddin="${d}" placeholder="＋ 添加景点，输入名称…" autocomplete="off"><div class="apsug" data-apsug="p${d}"></div></div>`;
   if(M.food&&M.food.length)h+=`<div class="apfood">当地美食：${M.food.map(k=>`<button class="tag" data-route="term-${k}">${esc(TERMS_[k].n)}</button>`).join("")}</div>`;
   if(M.note&&M.note.length)h+=`<p class="scnote">${M.note.map(esc).join("；")}</p>`;
-  const last=M.rows[M.rows.length-1];if(last)h+=`<p class="scnote">约 ${hm(last.at+(last.dur||60)+M.back)} 回到住处</p>`;
+  const last=M.rows.filter(r=>!r.mv).slice(-1)[0];if(last&&!M.dep)h+=`<p class="scnote">约 ${hm(last.at+(last.dur||60)+M.back)} 回到住处</p>`;
   return h}
 function apOrder(arr,B){const rest=[...arr],o=[];let p=B;while(rest.length){let bi=0,bd=1e9;rest.forEach((x,i)=>{const d=km(p,x.g);if(d<bd){bd=d;bi=i}});const x=rest.splice(bi,1)[0];o.push(x);p=x.g}
   const L=a=>{let s=0,q=B;a.forEach(x=>{s+=km(q,x.g);q=x.g});return s+km(q,B)};let best=L(o),imp=true,g=0;
@@ -3080,7 +3101,7 @@ function apOrder(arr,B){const rest=[...arr],o=[];let p=B;while(rest.length){let 
   return o}
 const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(Math.round(m%60)).padStart(2,"0");
 function apSchedule(d,meta,plan,edit){const M=meta&&meta[d];if(!M)return "";
-  return `<ol class="apday">${M.rows.map(r=>r.lunch?`<li class="lunch"><time>${hm(r.at)}</time><span>午餐 · 约 1 小时</span></li>`:`<li class="${r.eve?"eve ":""}${edit?"apsw":""}"${edit?` data-apid="${r.id}" data-apd="${d}"`:""}><time>${hm(r.at)}</time><span><button class="mylink" data-go="${r.id}"><b>${esc(NODES[r.id].n)}</b></button>${r.ev?`<em class="apev">${esc(r.ev)}</em>`:""}<small>游览约 ${r.dur>=60?(r.dur/60).toFixed(r.dur%60?1:0)+" 小时":r.dur+" 分钟"} · 前往约 ${r.tr} 分钟${r.eve?" · 晚间":""}</small></span>${edit?`<button class="apx" data-aprm="${d}|${r.id}" aria-label="删除">删除</button>`:""}</li>`).join("")}</ol>
+  return `<ol class="apday">${M.rows.map(r=>r.mv?`<li class="lunch mv"><time>${hm(r.at)}</time><span>${esc(r.txt)}</span></li>`:r.lunch?`<li class="lunch"><time>${hm(r.at)}</time><span>午餐 · 约 1 小时</span></li>`:`<li class="${r.eve?"eve ":""}${edit?"apsw":""}"${edit?` data-apid="${r.id}" data-apd="${d}"`:""}><time>${hm(r.at)}</time><span><button class="mylink" data-go="${r.id}"><b>${esc(NODES[r.id].n)}</b></button>${r.ev?`<em class="apev">${esc(r.ev)}</em>`:""}<small>游览约 ${r.dur>=60?(r.dur/60).toFixed(r.dur%60?1:0)+" 小时":r.dur+" 分钟"} · 前往约 ${r.tr} 分钟${r.eve?" · 晚间":""}</small></span>${edit?`<button class="apx" data-aprm="${d}|${r.id}" aria-label="删除">删除</button>`:""}</li>`).join("")}</ol>
   ${edit?`<div class="apadd"><input data-apaddin="${d}" placeholder="＋ 添加景点，输入名称…" autocomplete="off"><div class="apsug" data-apsug="${d}"></div></div>`:""}
   ${M.food&&M.food.length?`<div class="apfood">当地美食：${M.food.map(k=>`<button class="tag" data-route="term-${k}">${esc(TERMS_[k].n)}</button>`).join("")}</div>`:""}
   ${M.note&&M.note.length?`<p class="scnote">${M.note.map(esc).join("；")}</p>`:""}`}
@@ -3094,6 +3115,9 @@ function autoPages(){
   <p style="color:var(--ink-2)">填好日期和偏好，自动按区域排出每天的路线和大致时间，生成后可以保存成一个行程版本，再在「旅行计划」里手动调整。</p>
   <div class="apform">
    <label>旅行日期</label><div class="aprow"><input type="date" id="ap-start" value="${esc(AP.start)}"><span>至</span><input type="date" id="ap-end" value="${esc(AP.end)}"></div>
+   <label>到达 / 离开时间（可选，不填按整天安排）</label>
+   <div class="aprow wrap apio"><span>到达</span><input type="time" id="ap-arrt" value="${esc(AP.arrT||"")}"><select id="ap-arrp">${Object.entries(AP_PLACES).map(([k,x])=>`<option value="${k}"${(AP.arrP||"kix")===k?" selected":""}>${esc(x.n)}</option>`).join("")}</select></div>
+   <div class="aprow wrap apio"><span>离开</span><input type="time" id="ap-dept" value="${esc(AP.depT||"")}"><select id="ap-depp">${Object.entries(AP_PLACES).map(([k,x])=>`<option value="${k}"${(AP.depP||"kix")===k?" selected":""}>${esc(x.n)}</option>`).join("")}</select></div>
    <label>住宿</label><div class="aprow"><select id="ap-base">${Object.entries(AP_BASES).map(([k,x])=>`<option value="${k}"${AP.base===k?" selected":""}>${esc(x.n)}</option>`).join("")}</select></div>
    <label>节奏</label><div class="aprow">${opt({light:{n:"轻松 · 3 处"},mid:{n:"适中 · 4–5 处"},dense:{n:"密集 · 6–7 处"}},"pace")}</div>
    <label>交通方式</label><div class="aprow">${opt({public:{n:"公共交通"},car:{n:"自驾"}},"mode")}</div>
@@ -3110,7 +3134,7 @@ function autoPages(){
   else{const r=AP_RES;
     R+=`<p class="apbase">住宿：<b>${esc(AP_BASES[r.base].n)}</b>${r.baseWhy?`<br><small>${esc(r.baseWhy)}</small>`:""}</p>`;
     if(r.warn.length)R+=`<p class="scnote apwarn">${r.warn.map(esc).join("<br>")}</p>`;
-    R+=r.days.map((d,i)=>`<div class="sec">第${i+1}天 · ${fmtD(d,true)}</div>${r.plan[d].length?apSchedule(d,r.meta,r.plan,true):'<p class="scnote">自由活动 / 休息日</p>'+apSchedule(d,{[d]:{rows:[],back:0,food:[],note:[]}},r.plan,true)}<p class="scnote">约 ${hm(r.meta[d].rows.length?(r.meta[d].rows[r.meta[d].rows.length-1].at+(r.meta[d].rows[r.meta[d].rows.length-1].dur||60)+r.meta[d].back):0)} 回到住处</p>`).join("");
+    R+=r.days.map((d,i)=>`<div class="sec">第${i+1}天 · ${fmtD(d,true)}</div>${r.plan[d].length||r.meta[d].rows.length?apSchedule(d,r.meta,r.plan,true):'<p class="scnote">自由活动 / 休息日</p>'+apSchedule(d,{[d]:{rows:[],back:0,food:[],note:[]}},r.plan,true)}${(()=>{const M=r.meta[d],L=M.rows.filter(x=>!x.mv).slice(-1)[0];return L&&!M.dep?`<p class="scnote">约 ${hm(L.at+(L.dur||60)+M.back)} 回到住处</p>`:""})()}`).join("");
     const nm=`自动行程 ${fmtD(r.days[0])}–${fmtD(r.days[r.days.length-1])} · ${AP_PACE[r.opt.pace].n}`;
     R+=`<div class="apsave"><input id="ap-name" value="${esc(nm)}" maxlength="40" aria-label="版本名称"><button class="btn pri" data-apsave="1">保存为新版本并设为当前行程</button></div>
     <p class="scnote">时间为大致估算（按直线距离和交通方式推算），开放时间、预约和交通以官方信息为准。</p>`}
@@ -3141,20 +3165,20 @@ async function zip(u8,inv){const cs=inv?new DecompressionStream("deflate-raw"):n
 function tripObj(){const v=PV.v[PV.cur]||{},ds=planDates(),M=liveMeta();if(!ds.length)return null;
   const day0=new Date(ds[0]+"T00:00:00"),off=d=>Math.round((new Date(d+"T00:00:00")-day0)/864e5);
   const n=off(ds[ds.length-1])+1,d=[],m=[];for(let i=0;i<n;i++){d.push([]);m.push(0)}
-  ds.forEach(x=>{const i=off(x);d[i]=PLAN[x].slice();const mm=M[x];if(mm&&mm.rows&&mm.rows.filter(r=>!r.lunch).every(r=>PLAN[x].includes(r.id))&&PLAN[x].every(id=>mm.rows.some(r=>r.id===id)))
-    m[i]=[mm.rows.map(r=>r.lunch?[0,r.at]:[r.id,r.at,r.dur,r.tr,r.ev||"",r.eve?1:0]),mm.back,mm.food||[],mm.note||[]]});
+  ds.forEach(x=>{const i=off(x);d[i]=PLAN[x].slice();const mm=M[x];if(mm&&mm.rows&&mm.rows.filter(r=>!r.lunch&&!r.mv).every(r=>PLAN[x].includes(r.id))&&PLAN[x].every(id=>mm.rows.some(r=>r.id===id)))
+    m[i]=[mm.rows.map(r=>r.mv?[1,r.at,r.txt]:r.lunch?[0,r.at]:[r.id,r.at,r.dur,r.tr,r.ev||"",r.eve?1:0]),mm.back,mm.food||[],mm.note||[]]});
   return {v:1,n:v.name||"我的行程",s:ds[0],d,m}}
 async function tripEncode(){const o=tripObj();if(!o)return "";const u=new TextEncoder().encode(JSON.stringify(o));
   try{if(window.CompressionStream)return "z"+b64u(await zip(u))}catch(e){}return "j"+b64u(u)}
 async function tripDecode(c){const k=c[0],u=ub64(c.slice(1));const raw=k==="z"?await zip(u,true):u;const o=JSON.parse(new TextDecoder().decode(raw));
   const day0=new Date(o.s+"T00:00:00"),plan={},meta={};
   o.d.forEach((ids,i)=>{const ids2=ids.filter(id=>NODES[id]);if(!ids2.length)return;const t=new Date(day0.getTime()+i*864e5+12*36e5);const d=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
-    plan[d]=ids2;const mm=o.m&&o.m[i];if(mm)meta[d]={rows:mm[0].filter(r=>r[0]===0||NODES[r[0]]).map(r=>r[0]===0?{lunch:1,at:r[1]}:{id:r[0],at:r[1],dur:r[2],tr:r[3],ev:r[4],eve:r[5]}),back:mm[1],food:(mm[2]||[]).filter(k=>TERMS_[k]),note:mm[3]||[]}});
+    plan[d]=ids2;const mm=o.m&&o.m[i];if(mm)meta[d]={rows:mm[0].filter(r=>r[0]===0||r[0]===1||NODES[r[0]]).map(r=>r[0]===1?{mv:1,at:r[1],txt:r[2]}:r[0]===0?{lunch:1,at:r[1]}:{id:r[0],at:r[1],dur:r[2],tr:r[3],ev:r[4],eve:r[5]}),back:mm[1],food:(mm[2]||[]).filter(k=>TERMS_[k]),note:mm[3]||[]}});
   return {name:o.n,plan,meta}}
 function tripDayHtml(d,meta,plan){return meta[d]?apSchedule(d,meta,plan):`<ol class="apday">${plan[d].map(id=>`<li><time>·</time><span><button class="mylink" data-go="${id}"><b>${esc(NODES[id].n)}</b></button></span></li>`).join("")}</ol>`}
 function tripText(name,plan,meta,url){const ds=Object.keys(plan).sort();let s=`【${name}】${fmtD(ds[0])}–${fmtD(ds[ds.length-1])} · 共 ${ds.length} 天\n`;
   ds.forEach((d,i)=>{s+=`\n第${i+1}天 ${fmtD(d,true)}\n`;const M=meta[d];
-    if(M&&M.rows)M.rows.forEach(r=>{s+=r.lunch?`${hm(r.at)} 午餐\n`:`${hm(r.at)} ${NODES[r.id].n}${r.ev?"（"+r.ev+"）":""}\n`});else plan[d].forEach(id=>{s+=`· ${NODES[id].n}\n`});
+    if(M&&M.rows)M.rows.forEach(r=>{s+=r.mv?`${hm(r.at)} ${r.txt}\n`:r.lunch?`${hm(r.at)} 午餐\n`:`${hm(r.at)} ${NODES[r.id].n}${r.ev?"（"+r.ev+"）":""}\n`});else plan[d].forEach(id=>{s+=`· ${NODES[id].n}\n`});
     if(M&&M.food&&M.food.length)s+=`当地美食：${M.food.map(k=>TERMS_[k].n).join("、")}\n`;if(M&&M.note&&M.note.length)s+=`提示：${M.note.join("；")}\n`});
   if(url)s+=`\n在《京都旅行手帖》里打开（可一键导入行程）：\n${url}\n`;return s}
 function shareBox(){if(!SH_OPEN)return "";const canShare=!!navigator.share;
@@ -3168,7 +3192,7 @@ async function shOpen(){SH_OPEN=!SH_OPEN;SH_MSG="";SH_URL="";render(cur,false);i
 async function shCopy(txt,ok){try{await navigator.clipboard.writeText(txt);SH_MSG=ok}catch(e){const ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="position:fixed;opacity:0";document.body.appendChild(ta);ta.select();let r=false;try{r=document.execCommand("copy")}catch(_){}ta.remove();SH_MSG=r?ok:"复制没有成功，请长按上面的链接手动复制。"}render(cur,false)}
 function shPrint(name,plan,meta){const ds=Object.keys(plan).sort();let el=document.getElementById("printsheet");if(!el){el=document.createElement("div");el.id="printsheet";document.body.appendChild(el)}
   el.innerHTML=`<header><div class="ps-brand">京都旅行手帖</div><h1>${esc(name)}</h1><p>${fmtD(ds[0],true)} – ${fmtD(ds[ds.length-1],true)} · 共 ${ds.length} 天</p></header>`+
-   ds.map((d,i)=>{const M=meta[d];return `<section><h2>第${i+1}天 <small>${fmtD(d,true)}</small></h2><table>${M&&M.rows?M.rows.map(r=>r.lunch?`<tr class="l"><td>${hm(r.at)}</td><td>午餐</td><td></td></tr>`:`<tr><td>${hm(r.at)}</td><td><b>${esc(NODES[r.id].n)}</b> <span>${esc(NODES[r.id].ja||"")}</span>${r.ev?` · ${esc(r.ev)}`:""}</td><td>游览约 ${r.dur} 分钟 · 前往约 ${r.tr} 分钟</td></tr>`).join(""):plan[d].map(id=>`<tr><td>·</td><td><b>${esc(NODES[id].n)}</b> <span>${esc(NODES[id].ja||"")}</span></td><td></td></tr>`).join("")}</table>
+   ds.map((d,i)=>{const M=meta[d];return `<section><h2>第${i+1}天 <small>${fmtD(d,true)}</small></h2><table>${M&&M.rows?M.rows.map(r=>r.mv?`<tr class="l"><td>${hm(r.at)}</td><td>${esc(r.txt)}</td><td></td></tr>`:r.lunch?`<tr class="l"><td>${hm(r.at)}</td><td>午餐</td><td></td></tr>`:`<tr><td>${hm(r.at)}</td><td><b>${esc(NODES[r.id].n)}</b> <span>${esc(NODES[r.id].ja||"")}</span>${r.ev?` · ${esc(r.ev)}`:""}</td><td>游览约 ${r.dur} 分钟 · 前往约 ${r.tr} 分钟</td></tr>`).join(""):plan[d].map(id=>`<tr><td>·</td><td><b>${esc(NODES[id].n)}</b> <span>${esc(NODES[id].ja||"")}</span></td><td></td></tr>`).join("")}</table>
    ${M&&M.food&&M.food.length?`<p>当地美食：${M.food.map(k=>esc(TERMS_[k].n)).join("、")}</p>`:""}${M&&M.note&&M.note.length?`<p class="n">${M.note.map(esc).join("；")}</p>`:""}</section>`}).join("")+
    `<footer>时间为大致估算，开放时间与交通以官方信息为准 · ${esc(SH_URL?"在线版：":"")}${esc(SH_URL?shBase():"")}</footer>`;
   let ok=true;try{window.print()}catch(e){ok=false}
@@ -3197,6 +3221,8 @@ document.addEventListener("change",e=>{
   if(e.target.id==="ap-start"){AP.start=e.target.value;if(!AP.end||AP.end<AP.start)AP.end=AP.start;apSave();render(cur,false)}
   if(e.target.id==="ap-end"){AP.end=e.target.value;apSave()}
   if(e.target.id==="ap-base"){AP.base=e.target.value;apSave()}
+  if(e.target.id==="ap-arrt"){AP.arrT=e.target.value;apSave()}if(e.target.id==="ap-dept"){AP.depT=e.target.value;apSave()}
+  if(e.target.id==="ap-arrp"){AP.arrP=e.target.value;apSave()}if(e.target.id==="ap-depp"){AP.depP=e.target.value;apSave()}
 });
 document.addEventListener("click",e=>{
   const q=s=>e.target.closest(s);let b;
@@ -3461,7 +3487,7 @@ function guidePages(){
   ["搜索与标签索引","右上角搜索框可以搜景点名，也可以搜标签，按 / 键快速聚焦。打开「目录」，下方的「标签索引」按时令、历史文化、寺社、自然、吃喝玩乐分组，「历史」包含日本战国、明治维新、文学等子标签，点任意一行进入该标签的全部景点。"],
   ["我的标签","每个景点标题下都有「我的标签」：点「♡ 收藏」「想去」「已去过」，或输入自己的标签（例如「第二天」「带父母」）。所有保存的景点汇总在目录最后的「我的标签」页，可以导出后在别的设备导入。标签只保存在你自己的浏览器里。"],
   ["旅行计划","景点页的「我的标签」下方有「旅行计划」：选一个日期，点「加入行程」即可把景点排进那一天，一个景点也可以排进多天。顶部的「旅行计划」按钮打开行程单，按日期列出每天的景点并可调整顺序；点「在地图上看」或在地图上方选「第 N 天」，地图只显示当天的景点。行程和我的标签一起导出、导入。"],
-  ["自动生成行程","在「旅行计划」页或目录里点「✨ 自动生成行程」：填出发和结束日期、住宿地点（不填会推荐住宿区域）、节奏（轻松／适中／密集）、交通方式（公共交通／自驾），再选几个偏好标签，例如「适合老人」「适合情侣」「美食」「温泉」，也可以指定必去景点。想专门去奈良、大阪、宇治等地玩一天，就在「想去的区域」里点一下（每点一次多排一天）；时令类偏好（赏樱、赏枫、赏雪、祭典、跨年）只在出行日期对得上时生效。系统会按区域把景点排成每天的路线，给出大致时间、午餐和当地美食，并自动考虑出行期间的赏樱、红叶、祭典和跨年活动。不满意可以点「换一种排法」，也可以直接改预览：手机上把某个景点向左滑出「删除」，电脑上鼠标移上去点「删除」；每天下方的输入框打字即可搜索并添加景点，时间会自动重算；满意就保存为一个版本，之后在旅行计划里照常手动调整。"],
+  ["自动生成行程","在「旅行计划」页或目录里点「✨ 自动生成行程」：填出发和结束日期（可以再填到达、离开的时间和机场／车站，到达日和离开日会自动扣掉入境、交通和提前到机场的时间）、住宿地点（不填会推荐住宿区域）、节奏（轻松／适中／密集）、交通方式（公共交通／自驾），再选几个偏好标签，例如「适合老人」「适合情侣」「美食」「温泉」，也可以指定必去景点。想专门去奈良、大阪、宇治等地玩一天，就在「想去的区域」里点一下（每点一次多排一天）；时令类偏好（赏樱、赏枫、赏雪、祭典、跨年）只在出行日期对得上时生效。系统会按区域把景点排成每天的路线，给出大致时间、午餐和当地美食，并自动考虑出行期间的赏樱、红叶、祭典和跨年活动。不满意可以点「换一种排法」，也可以直接改预览：手机上把某个景点向左滑出「删除」，电脑上鼠标移上去点「删除」；每天下方的输入框打字即可搜索并添加景点，时间会自动重算；满意就保存为一个版本，之后在旅行计划里照常手动调整。"],
   ["多版本行程","旅行计划顶部的「行程版本」可以保存多套方案：切换、复制为新版本、新建空白版本、重命名或删除。每个版本单独保存，互不影响。"],
   ["分享行程","在旅行计划页点「📤 分享行程」：复制链接发给朋友，对方打开就是这本手帖，并能一键把行程导入成自己的新版本；「复制文字版」适合直接贴进微信；「打印 / 存为 PDF」会生成一份干净的行程单，打印时选「存储为 PDF」即可。"],
   ["词典与深度内容","正文中带虚下划线的词（宗派、建筑样式、佛像、人物、历史事件等）可以点击，先弹出一张小卡片，再点「查看词条」进入词典页，看它在书中哪些地方出现。重点古迹还有「亮点」「历史沿革」「建筑档案」，看点页里有结构、佛像等细节卡和境内图。每页底部列出资料来源。目录里的「词典」可以浏览全部词条。"],
