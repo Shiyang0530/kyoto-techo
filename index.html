@@ -179,6 +179,9 @@ figure.photo.hero figcaption{font-size:10px;color:var(--muted);padding:4px 2px 0
 .apday li.apsw .apx{position:absolute;top:0;bottom:0;right:-84px;width:76px;border:0;border-radius:6px;background:var(--shu);color:#fff;font-size:13px;cursor:pointer}
 .apday{overflow:hidden}
 @media (hover:hover){.apday li.apsw .apx{right:0;width:auto;top:50%;bottom:auto;transform:translateY(-50%);padding:3px 9px;background:none;color:var(--muted);border:1px solid var(--line,rgba(0,0,0,.15));opacity:0;transition:opacity .15s}.apday li.apsw:hover .apx{opacity:1}.apday li.apsw .apx:hover{color:var(--shu);border-color:var(--shu)}}
+.apday.pl li{grid-template-columns:52px 1fr auto;align-items:center}.apday li span.pmv{display:flex;flex-direction:row;gap:4px}.pmv button{border:1px solid var(--line);background:var(--page);color:var(--ink-2);border-radius:6px;width:26px;height:24px;cursor:pointer;font-size:12px}.pmv button:disabled{opacity:.3;cursor:default}
+@media (hover:hover){.apday.pl li.apsw .apx{right:62px}}
+.apsug button:disabled{opacity:.5;cursor:default}
 .apadd{position:relative;margin:6px 0 4px}.apadd input{width:100%;padding:8px 10px;border:1px dashed var(--line,rgba(0,0,0,.2));border-radius:8px;background:transparent;color:var(--ink);font-size:14px}
 .apsug{display:flex;flex-direction:column;gap:2px;margin-top:4px}.apsug:empty{display:none}.apsug button{text-align:left;border:0;background:var(--page-2);color:var(--ink);padding:7px 10px;border-radius:6px;cursor:pointer;display:flex;flex-direction:column}.apsug button small{color:var(--muted);font-size:11.5px}.apsug button:hover{background:var(--shu);color:#fff}.apsug button:hover small{color:#fff}
 .shbox{margin-top:10px;padding:12px;border-radius:8px;background:var(--page-2);display:flex;flex-direction:column;gap:8px}.shbox label{font-size:12px;color:var(--muted)}
@@ -3027,7 +3030,7 @@ function apDayCalc(ordered,eve,B,pace,mode,rg){
     const all=[...ordered,...(eve?[eve]:[])];
     const idset=new Set();all.forEach(x=>{idset.add(x.id);let n=NODES[x.id];while(n&&n.depth>1){idset.add(n.id);n=n.parent}});
     const food=Object.entries(TERMS_).filter(([,tm])=>tm.k==="美食"&&(tm.w||[]).some(w=>idset.has(w))).map(([k])=>k).slice(0,3);
-    const far=all.find(x=>PLANDATA[x.id][3].includes("v")&&km(B,x.g)>40);
+    const far=all.find(x=>(x.f||"").includes("v")&&km(B,x.g)>40);
     const note=[];if(far)note.push(`${NODES[far.id].n}离住处较远，建议当晚在当地过夜，次日再回来`);
     all.forEach(x=>{if(x.remote&&mode!=="car")note.push(`${NODES[x.id].n}公共交通班次较少，请提前查好时刻表`)});
     if(rg)note.unshift(`这一天专门安排「${AP_REGIONS[rg]}」`);
@@ -3041,9 +3044,24 @@ function apResched(d){const r=AP_RES;if(!r||!r.plan[d])return;const old=r.meta[d
   const eve=eveId?apMk(eveId,{ev:ex[eveId].ev}):null;
   r.plan[d]=[...ordered,...(eve?[eve]:[])].map(x=>x.id);
   r.meta[d]=Object.assign(apDayCalc(ordered,eve,B,pace,mode,old.rg),{rg:old.rg})}
-function apSugg(q){q=(q||"").trim().toLowerCase();if(!q)return [];const out=[];
-  for(const id in PLANDATA){const n=NODES[id];if(!n)continue;const hay=[n.n,n.ja||"",id].join(" ").toLowerCase();if(hay.includes(q))out.push(id);if(out.length>=8)break}
+function apSugg(q,all){q=(q||"").trim().toLowerCase();if(!q)return [];const out=[];
+  for(const id of (all?Object.keys(NODES).filter(k=>NODES[k].depth>=2):Object.keys(PLANDATA))){const n=NODES[id];if(!n)continue;const hay=[n.n,n.ja||"",id].join(" ").toLowerCase();if(hay.includes(q))out.push(id);if(out.length>=8)break}
   return out}
+function planCalc(d){const v=PV.v[PV.cur]||{},o=v.opt||{},pace=AP_PACE[o.pace]||AP_PACE.mid,mode=o.mode||"public",B=((AP_BASES[o.baseRes]||AP_BASES[o.base]||{}).g)||AP_BASES.kawara.g;
+  const M=(v.meta||{})[d]||{};const eveIds=new Set((M.rows||[]).filter(r=>r.eve).map(r=>r.id));const evs={};(M.rows||[]).forEach(r=>{if(r.id&&r.ev)evs[r.id]=r.ev});
+  const pts=(PLAN[d]||[]).map(id=>{let n=NODES[id],pd=null;while(n&&!(pd=PLANDATA[n.id]))n=n.parent;if(!pd)return null;const own=PLANDATA[id];return {id,g:[pd[0],pd[1]],dur:own?own[2]:30,f:own?own[3]:"",remote:pd[3].includes("r"),ev:evs[id]||""}}).filter(Boolean);
+  let eve=null;if(pts.length>1&&eveIds.has(pts[pts.length-1].id))eve=pts.pop();
+  return Object.assign(apDayCalc(pts,eve,B,pace,mode,M.rg),{rg:M.rg})}
+const liveMeta=()=>{const o={};planDates().forEach(d=>o[d]=planCalc(d));return o};
+const durTx=m=>m>=60?(m/60).toFixed(m%60?1:0)+" 小时":m+" 分钟";
+function planDayHtml(d){const M=planCalc(d),ids=PLAN[d],seen=new Set();const n=ids.length;
+  const row=(id,r)=>{const k=ids.indexOf(id),N=NODES[id];seen.add(id);return `<li class="apsw${r&&r.eve?" eve":""}" data-apid="${id}" data-apd="${d}"><time>${r?hm(r.at):"—"}</time><span><button class="mylink" data-go="${id}"><b>${esc(N.n)}</b></button>${r&&r.ev?`<em class="apev">${esc(r.ev)}</em>`:""}<small>${r?`游览约 ${durTx(r.dur)} · 前往约 ${r.tr} 分钟${r.eve?" · 晚间":""}`:esc(N.folders.slice(0,-1).join(" › "))}</small></span><span class="pmv"><button data-planmv="${d}|${id}|-1" aria-label="上移"${k?"":" disabled"}>↑</button><button data-planmv="${d}|${id}|1" aria-label="下移"${k<n-1?"":" disabled"}>↓</button></span><button class="apx" data-planrm2="${d}|${id}" aria-label="删除">删除</button></li>`};
+  let h=`<ol class="apday pl">${M.rows.map(r=>r.lunch?`<li class="lunch"><time>${hm(r.at)}</time><span>午餐 · 约 1 小时</span></li>`:row(r.id,r)).join("")}${ids.filter(id=>!seen.has(id)).map(id=>row(id,null)).join("")}</ol>`;
+  h+=`<div class="apadd"><input data-plaaddin="${d}" placeholder="＋ 添加景点，输入名称…" autocomplete="off"><div class="apsug" data-apsug="p${d}"></div></div>`;
+  if(M.food&&M.food.length)h+=`<div class="apfood">当地美食：${M.food.map(k=>`<button class="tag" data-route="term-${k}">${esc(TERMS_[k].n)}</button>`).join("")}</div>`;
+  if(M.note&&M.note.length)h+=`<p class="scnote">${M.note.map(esc).join("；")}</p>`;
+  const last=M.rows[M.rows.length-1];if(last)h+=`<p class="scnote">约 ${hm(last.at+(last.dur||60)+M.back)} 回到住处</p>`;
+  return h}
 function apOrder(arr,B){const rest=[...arr],o=[];let p=B;while(rest.length){let bi=0,bd=1e9;rest.forEach((x,i)=>{const d=km(p,x.g);if(d<bd){bd=d;bi=i}});const x=rest.splice(bi,1)[0];o.push(x);p=x.g}
   const L=a=>{let s=0,q=B;a.forEach(x=>{s+=km(q,x.g);q=x.g});return s+km(q,B)};let best=L(o),imp=true,g=0;
   while(imp&&g++<30){imp=false;for(let i=0;i<o.length-1;i++)for(let j=i+1;j<o.length;j++){const c=[...o.slice(0,i),...o.slice(i,j+1).reverse(),...o.slice(j+1)];const l=L(c);if(l<best-1e-6){best=l;o.splice(0,o.length,...c);imp=true}}}
@@ -3090,8 +3108,10 @@ function pvBar(){const ks=Object.keys(PV.v);return `<div class="pvbar"><label>�
   <div class="aprow wrap"><button class="btn sm pri" data-route="autoplan">✨ 自动生成行程</button><button class="btn sm" data-pvdup="1">复制为新版本</button><button class="btn sm" data-pvnew="1">新建空白版本</button><button class="btn sm" data-pvren="1">重命名</button><button class="btn sm${SH_OPEN?" on":""}" data-shopen="1">📤 分享行程</button>${ks.length>1?`<button class="btn sm" data-pvdel="1">${PV_DEL?"再点一次确认删除":"删除此版本"}</button>`:""}</div>
   ${shareBox()}${PV_REN?`<div class="aprow"><input id="pv-name" value="${esc(PV.v[PV.cur].name)}" maxlength="40"><button class="btn sm pri" data-pvrenok="1">确定</button></div>`:""}</div>`}
 let PV_DEL=false,PV_REN=false;
-document.addEventListener("focusin",e=>{const el=e.target;if(el.dataset&&el.dataset.apaddin)setTimeout(()=>{try{el.scrollIntoView({block:"start",behavior:"smooth"})}catch(_){}},300)});
-document.addEventListener("input",e=>{const el=e.target;if(!el.dataset||!el.dataset.apaddin)return;const d=el.dataset.apaddin;const box=document.querySelector(`[data-apsug="${d}"]`);if(!box)return;
+document.addEventListener("focusin",e=>{const el=e.target;if(el.dataset&&(el.dataset.apaddin||el.dataset.plaaddin))setTimeout(()=>{try{el.scrollIntoView({block:"start",behavior:"smooth"})}catch(_){}},300)});
+document.addEventListener("input",e=>{const el=e.target;if(el.dataset&&el.dataset.plaaddin){const d=el.dataset.plaaddin,box=document.querySelector(`[data-apsug="p${d}"]`);if(!box)return;
+  box.innerHTML=apSugg(el.value,true).map(id=>{const N=NODES[id],has=PLAN[d].includes(id),other=planDates().filter(k=>k!==d&&PLAN[k].includes(id)).map(k=>"第"+dayNo(k)+"天");return `<button data-plaaddid="${d}|${id}"${has?" disabled":""}><b>${esc(N.n)}</b><small>${esc(N.folders.slice(0,-1).join(" › "))}${has?" · 已在这一天":other.length?" · 也在"+other.join("、"):""}</small></button>`}).join("")||(el.value.trim()?'<p class="scnote">没有找到匹配的景点</p>':"");return}
+  if(!el.dataset||!el.dataset.apaddin)return;const d=el.dataset.apaddin;const box=document.querySelector(`[data-apsug="${d}"]`);if(!box)return;
   const used=new Set(Object.values(AP_RES?AP_RES.plan:{}).flat());
   box.innerHTML=apSugg(el.value).map(id=>{const where=Object.keys(AP_RES.plan).find(k=>AP_RES.plan[k].includes(id));return `<button data-apaddid="${d}|${id}"><b>${esc(NODES[id].n)}</b><small>${esc(NODES[id].ja||"")}${where?` · 已在第${AP_RES.days.indexOf(where)+1}天，点选会移到这天`:""}</small></button>`}).join("")||(el.value.trim()?'<p class="scnote">没有找到匹配的景点</p>':"")});
 (function(){let sx=0,sy=0,li=null,dx=0;
@@ -3105,7 +3125,7 @@ const shBase=()=>location.protocol==="https:"&&/github\.io$/.test(location.hostn
 const b64u=u8=>{let s="";for(let i=0;i<u8.length;i+=8192)s+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
 const ub64=s=>{s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
 async function zip(u8,inv){const cs=inv?new DecompressionStream("deflate-raw"):new CompressionStream("deflate-raw");const r=new Blob([u8]).stream().pipeThrough(cs);return new Uint8Array(await new Response(r).arrayBuffer())}
-function tripObj(){const v=PV.v[PV.cur]||{},ds=planDates(),M=v.meta||{};if(!ds.length)return null;
+function tripObj(){const v=PV.v[PV.cur]||{},ds=planDates(),M=liveMeta();if(!ds.length)return null;
   const day0=new Date(ds[0]+"T00:00:00"),off=d=>Math.round((new Date(d+"T00:00:00")-day0)/864e5);
   const n=off(ds[ds.length-1])+1,d=[],m=[];for(let i=0;i<n;i++){d.push([]);m.push(0)}
   ds.forEach(x=>{const i=off(x);d[i]=PLAN[x].slice();const mm=M[x];if(mm&&mm.rows&&mm.rows.filter(r=>!r.lunch).every(r=>PLAN[x].includes(r.id))&&PLAN[x].every(id=>mm.rows.some(r=>r.id===id)))
@@ -3153,9 +3173,9 @@ function tripPages(code){const T=TRIP_C[code];
   return [L,R]}
 document.addEventListener("click",e=>{const q=s=>e.target.closest(s);let b;
   if(q("[data-shopen]")){shOpen();return}
-  if(q("[data-shsys]")){const v=PV.v[PV.cur];navigator.share({title:v.name,text:tripText(v.name,PLAN,v.meta||{},""),url:SH_URL}).catch(()=>{});return}
-  if(b=q("[data-shcopy]")){const v=PV.v[PV.cur];if(b.dataset.shcopy==="url")shCopy(SH_URL,"链接已复制，可以粘贴到微信、邮件里发给对方。");else shCopy(tripText(v.name,PLAN,v.meta||{},SH_URL),"文字版已复制（末尾附了链接）。");return}
-  if(q("[data-shprint]")){const v=PV.v[PV.cur];shPrint(v.name,PLAN,v.meta||{});return}
+  if(q("[data-shsys]")){const v=PV.v[PV.cur];navigator.share({title:v.name,text:tripText(v.name,PLAN,liveMeta(),""),url:SH_URL}).catch(()=>{});return}
+  if(b=q("[data-shcopy]")){const v=PV.v[PV.cur];if(b.dataset.shcopy==="url")shCopy(SH_URL,"链接已复制，可以粘贴到微信、邮件里发给对方。");else shCopy(tripText(v.name,PLAN,liveMeta(),SH_URL),"文字版已复制（末尾附了链接）。");return}
+  if(q("[data-shprint]")){const v=PV.v[PV.cur];shPrint(v.name,PLAN,liveMeta());return}
   if(b=q("[data-tripimp]")){const T=TRIP_C[b.dataset.tripimp];if(!T||T.err)return;PLAN=JSON.parse(JSON.stringify(T.plan));pvNew(T.name+"（收到的）",PLAN,T.meta,null);savePlan();SH_OPEN=false;go("plan");return}
 });
 
@@ -3168,6 +3188,7 @@ document.addEventListener("change",e=>{
 document.addEventListener("click",e=>{
   const q=s=>e.target.closest(s);let b;
   if(b=q("[data-aptag]")){const k=b.dataset.aptag;AP.tags=AP.tags.includes(k)?AP.tags.filter(x=>x!==k):[...AP.tags,k];apSave();render(cur,false);return}
+  if(b=q("[data-plaaddid]")){const [d,id]=b.dataset.plaaddid.split("|");if(PLAN[d]&&!PLAN[d].includes(id)){const M=planCalc(d),ev=M.rows.find(r=>r.eve);const i=ev?PLAN[d].indexOf(ev.id):-1;if(i>=0)PLAN[d].splice(i,0,id);else PLAN[d].push(id);savePlan()}render(cur,false);return}
   if(b=q("[data-aprm]")){const [d,id]=b.dataset.aprm.split("|");AP_RES.plan[d]=AP_RES.plan[d].filter(x=>x!==id);apResched(d);render(cur,false);return}
   if(b=q("[data-apaddid]")){const [d,id]=b.dataset.apaddid.split("|");if(!AP_RES.plan[d].includes(id)){Object.keys(AP_RES.plan).forEach(k=>{if(k!==d&&AP_RES.plan[k].includes(id)){AP_RES.plan[k]=AP_RES.plan[k].filter(x=>x!==id);apResched(k)}});AP_RES.plan[d].push(id);apResched(d)}render(cur,false);return}
   if(b=q("[data-apreg]")){const k=b.dataset.apreg,c=AP.regions[k]||0,mx=Math.min(k==="kyoto"?10:4,Math.max(1,apDays(AP.start,AP.end).length));if(c>=mx)delete AP.regions[k];else AP.regions[k]=c+1;apSave();render(cur,false);return}
@@ -3176,7 +3197,7 @@ document.addEventListener("click",e=>{
   if(b=q("[data-apmustrm]")){AP.must=AP.must.filter(x=>x!==b.dataset.apmustrm);apSave();render(cur,false);return}
   if(q("[data-apgo]")){AP_SEED=1;AP_RES=apGenerate();render(cur,false);if(!wide()){const r=document.getElementById("R");r&&r.scrollIntoView({behavior:"smooth"})}return}
   if(q("[data-apre]")){AP_SEED++;AP_RES=apGenerate();render(cur,false);return}
-  if(q("[data-apsave]")&&AP_RES&&!AP_RES.err){const nm=($("#ap-name").value||"自动行程").trim();PLAN=JSON.parse(JSON.stringify(AP_RES.plan));pvNew(nm,PLAN,AP_RES.meta,AP_RES.opt);savePlan();go("plan");return}
+  if(q("[data-apsave]")&&AP_RES&&!AP_RES.err){const nm=($("#ap-name").value||"自动行程").trim();PLAN=JSON.parse(JSON.stringify(AP_RES.plan));pvNew(nm,PLAN,AP_RES.meta,Object.assign({},AP_RES.opt,{baseRes:AP_RES.base}));savePlan();go("plan");return}
   if(q("[data-pvdup]")){const c=PV.v[PV.cur];pvNew((c?c.name:"行程")+"（副本）",PLAN,c?c.meta:{},c?c.opt:null);render(cur,false);return}
   if(q("[data-pvnew]")){PLAN={};pvNew("新行程 "+(Object.keys(PV.v).length+1),{});savePlan();render(cur,false);return}
   if(q("[data-pvren]")){PV_REN=!PV_REN;render(cur,false);return}
@@ -3399,10 +3420,10 @@ function lca(ids){const ch=id=>{const a=[];let n=NODES[id];while(n){a.unshift(n)
 function planPages(){
   const ds=planDates();
   const L=`<span class="eyebrow">个人</span><div class="tagtitle">旅行计划</div>${pvBar()}
-  <p style="color:var(--ink-2)">在任意景点页标题下的「旅行计划」里选一个日期并点「加入行程」，景点就会按日期排进这张行程单。每天可以上下调整顺序；点「在地图上看」会打开能涵盖当天所有景点的地图，并只显示当天的景点。地图上方的筛选里也可以直接选「第 N 天」。</p>
+  <p style="color:var(--ink-2)">在任意景点页标题下的「旅行计划」里选一个日期并点「加入行程」，景点就会按日期排进这张行程单；也可以在每天下方的输入框直接搜索添加。用 ↑↓ 调整顺序，手机上向左滑可以删除（电脑上鼠标移上去点「删除」），时间会按顺序自动重算；点「在地图上看」会打开能涵盖当天所有景点的地图，并只显示当天的景点。地图上方的筛选里也可以直接选「第 N 天」。</p>
   ${ds.length?`<div class="plandays">${ds.map((d,i)=>`<div class="pday"><a href="#pd-${d}" data-pjump="${d}"><b>第${i+1}天</b><span>${fmtD(d,true)}</span><em>${PLAN[d].length} 处</em></a><button class="btn sm" data-planmap="${d}">在地图上看</button></div>`).join("")}</div>`:'<p style="color:var(--muted)">还没有安排任何日期。</p>'}
   <p style="margin-top:14px"><button class="btn" data-route="mytags">导出 / 导入（在「我的标签」页）</button> <button class="btn" data-planclear="1">${PLAN_CLEAR?"再点一次确认清空":"清空行程"}</button></p><span class="folio">PLAN</span>`;
-  const R=`<div class="kicker"><span class="kind">行程单</span><span>${ds.length?fmtD(ds[0])+" – "+fmtD(ds[ds.length-1])+" · 共 "+ds.length+" 天":"空"}</span></div><h1>旅行计划</h1>${ds.length?ds.map((d,i)=>`<div class="sec" id="pd-${d}">第${i+1}天 · ${fmtD(d,true)} · ${PLAN[d].length}</div><ol class="plist">${PLAN[d].map((id,k)=>{const n=NODES[id];return `<li><span class="n">${k+1}</span><button class="mylink" data-go="${id}"><b>${apTime(d,id)}${esc(n.n)}</b><small>${esc(n.folders.slice(0,-1).join(" › "))}${n.i&&n.i.h?" · "+esc(n.i.h):""}</small></button><span class="pact"><button data-planmv="${d}|${id}|-1" aria-label="上移"${k?"":" disabled"}>↑</button><button data-planmv="${d}|${id}|1" aria-label="下移"${k<PLAN[d].length-1?"":" disabled"}>↓</button><button data-planrm2="${d}|${id}" aria-label="移除">×</button></span></li>`}).join("")}</ol>${apDayExtra(d)}`).join(""):`<p class="intro" style="margin-top:14px">这里还是空的。翻到任何一个景点，在标题下方的「旅行计划」里选好日期，点「加入行程」。</p>`}<span class="folio">PLAN</span>`;
+  const R=`<div class="kicker"><span class="kind">行程单</span><span>${ds.length?fmtD(ds[0])+" – "+fmtD(ds[ds.length-1])+" · 共 "+ds.length+" 天":"空"}</span></div><h1>旅行计划</h1>${ds.length?ds.map((d,i)=>`<div class="sec" id="pd-${d}">第${i+1}天 · ${fmtD(d,true)} · ${PLAN[d].length} 处</div>${planDayHtml(d)}`).join(""):`<p class="intro" style="margin-top:14px">这里还是空的。翻到任何一个景点，在标题下方的「旅行计划」里选好日期，点「加入行程」。</p>`}<span class="folio">PLAN</span>`;
   return [L,R];
 }
 let PLAN_CLEAR=false;
