@@ -2951,7 +2951,7 @@ function apGenerate(){
   const S={};
   for(const id of ids){const n=NODES[id],[la,lo,dur,f]=PLANDATA[id];const has=k=>(n.t||[]).includes(k);
     if(T.includes("elderly")&&!f.includes("e")&&!AP.must.includes(id))continue;
-    let s=10+(has("hot")?8:0)+(n.star?5:0);
+    let s=10+(has("hot")?8:0)+(n.star?(!T.filter(k=>k!=="elderly").length||T.includes("hot")?15:5):0);
     const ev=(n.sm&&n.sm.matsuri)||[];
     const inSeason=k=>k==="matsuri"?days.some((d,i)=>ev.some(([a,b])=>ms[i]>=a-0.005&&ms[i]<=b+0.005)):k==="newyear"?days.some(d=>/-(12-31|01-0[1-3])$/.test(d)):ms.some(m=>segHit((n.sm&&n.sm[k])||SC_DEF[k],m));
     let hit=0;T.forEach(k=>{if(k==="elderly"||!has(k))return;if(AP_SEASON.includes(k)&&!inSeason(k))return;s+=AP_SEASON.includes(k)?20:12;hit++});if(T.filter(k=>k!=="elderly").length&&!hit)s-=4;
@@ -2978,7 +2978,8 @@ function apGenerate(){
   AP.tags.filter(k=>AP_SEASON.includes(k)).forEach(k=>{if(!Object.keys(S).some(id=>{const n=NODES[id];return (n.t||[]).includes(k)&&(k==="matsuri"?days.some((d,i)=>((n.sm&&n.sm.matsuri)||[]).some(([a,b])=>ms[i]>=a-0.005&&ms[i]<=b+0.005)):k==="newyear"?days.some(d=>/-(12-31|01-0[1-3])$/.test(d)):ms.some(m=>segHit((n.sm&&n.sm[k])||SC_DEF[k],m)))}))warn.push(`出行日期不在「${TAGS[k]}」的时节内，这个偏好没有生效`)});
   const reserved=new Set();Object.values(fixed).forEach(a=>a.forEach(x=>reserved.add(x.id)));
   const regDay={};{const free=days.map((d,i)=>[d,i]).filter(([d])=>!fixed[d]);const pref=[...free.slice(1,-1),...free.slice(-1),...free.slice(0,1)].map(x=>x[0]);let pi=0;
-    const want=[];Object.entries(AP.regions||{}).forEach(([r,k])=>{for(let j=0;j<k;j++)want.push(r)});
+    const want=[];const fixedIn=r=>days.filter(d=>fixed[d]&&fixed[d].some(x=>apRegion(x.id)===r||(r==="kyoto"&&NODES[x.id]&&(()=>{let n=NODES[x.id];while(n){if(n.id==="kyoto")return 1;n=n.parent}})()))).length;
+    Object.entries(AP.regions||{}).sort((a,b)=>(a[0]==="kyoto"||AP_REG_SUB[a[0]]?1:0)-(b[0]==="kyoto"||AP_REG_SUB[b[0]]?1:0)).forEach(([r,k])=>{const kk=r==="kyoto"?Math.max(0,k-fixedIn("kyoto")):k;for(let j=0;j<kk;j++)want.push(r)});
     const order=[];for(let j=0;j<want.length;j++){if(pi>=pref.length){warn.push(`日期不够，「${AP_REGIONS[want[j]]}」少排了 1 天`);continue}order.push([pref[pi++],want[j]])}
     order.sort((a,b)=>a[0]<b[0]?-1:1);const seen={};order.forEach(([d,r])=>{regDay[d]=r});}
   const KY=new Set(["kyoto",...Object.keys(AP_REG_SUB)]);const regSet=new Set(Object.values(regDay).filter(r=>!KY.has(r)));
@@ -2988,15 +2989,16 @@ function apGenerate(){
     const rg=regDay[d]||"";
     const pool=()=>Object.values(S).filter(x=>!used.has(x.id)&&!reserved.has(x.id)&&!(PLANDATA[x.id][3].includes("x"))&&(rg?apRegion(x.id)===rg:!regSet.has(apRegion(x.id))||x.s>=1000&&!Object.values(regDay).includes(apRegion(x.id))));
     const tripCost=arr=>{if(!arr.length)return 0;let t=0,p=B;const o=apOrder(arr,B);o.forEach(x=>{t+=apTravel(p,x.g,mode,x.remote)+x.dur;p=x.g});return t+apTravel(p,B,mode,false)};
-    if(!list.length){let best=null;for(const x of pool()){if(x.dur<40&&x.s<1000)continue;const rt=apTravel(B,x.g,mode,x.remote)*2+x.dur;if(rt>pace.budget+(x.s>=400||(rg&&!KY.has(rg))?300:60))continue;const v=x.s-rt*0.06-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
+    if(!list.length){let best=null;const P=pool();for(const x of P){if(x.dur<40&&x.s<1000)continue;const rt=apTravel(B,x.g,mode,x.remote)*2+x.dur;if(rt>pace.budget+(x.s>=400||(rg&&!KY.has(rg))?300:60))continue;const nb=P.filter(y=>y!==x&&!y.f.includes("v")&&!y.f.includes("n")&&apTravel(x.g,y.g,mode,y.remote)<=(mode==="car"?35:30)).map(y=>y.s).sort((a,b)=>b-a).slice(0,pace.max-1).reduce((a,b)=>a+b,0);const v=x.s+nb*0.6-rt*0.06-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
       if(best){list.push(best[1]);used.add(best[1].id)}}
+    const BD=pace.budget+(list.length?Math.max(0,Math.min(150,2*apTravel(B,list[0].g,mode,list[0].remote)-50)):0);
     let guard=0;while(list.length<pace.max&&guard++<40){const last=apOrder(list,B).slice(-1)[0]||{g:B};let best=null;
-      for(const x of pool()){if(PLANDATA[x.id][3].includes("v")&&list.length&&!rg)continue;const c=tripCost([...list,x]);if(c>pace.budget)continue;const near=Math.min(...list.map(y=>apTravel(y.g,x.g,mode,x.remote)));const fromA=apTravel(list[0].g,x.g,mode,x.remote);if(fromA>(mode==="car"?35:30))continue;const v=x.s-near*0.7-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
+      for(const x of pool()){if(PLANDATA[x.id][3].includes("v")&&list.length&&!rg)continue;const c=tripCost([...list,x]);if(c>BD)continue;const near=Math.min(...list.map(y=>apTravel(y.g,x.g,mode,x.remote)));const fromA=apTravel(list[0].g,x.g,mode,x.remote);if(fromA>(mode==="car"?35:30))continue;const v=x.s-near*0.7-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
       if(!best)break;list.push(best[1]);used.add(best[1].id)}
-    if(list.length&&list.length<pace.max&&tripCost(list)<pace.budget*0.65){let guard2=0;while(list.length<pace.max&&guard2++<20){let best=null;const ord=apOrder(list,B),last=ord[ord.length-1];
-      for(const x of pool()){if(x.f.includes("v"))continue;const c=tripCost([...list,x]);if(c>pace.budget)continue;const tt=apTravel(last.g,x.g,mode,x.remote);if(tt>30)continue;const v=x.s-tt*0.5-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
+    if(list.length&&list.length<pace.max&&tripCost(list)<BD*0.65){let guard2=0;while(list.length<pace.max&&guard2++<20){let best=null;const ord=apOrder(list,B),last=ord[ord.length-1];
+      for(const x of pool()){if(x.f.includes("v"))continue;const c=tripCost([...list,x]);if(c>BD)continue;const tt=apTravel(last.g,x.g,mode,x.remote);if(tt>30)continue;const v=x.s-tt*0.5-(x.f.includes("n")?6:0);if(!best||v>best[0])best=[v,x]}
       if(!best)break;list.push(best[1]);used.add(best[1].id)}}
-    const ordered0=apOrder(list,B);const ordered=[...ordered0.filter(x=>!x.f.includes("n")),...ordered0.filter(x=>x.f.includes("n"))];
+    const ordered0=apOrder(list,B);const ordered=ordered0.slice();{let g=0;const NO=new Set(["pontocho","takasegawa","dotonbori","kyoto-station"]);if(ordered.length>1&&NO.has(ordered[0].id))ordered.reverse();while(ordered.length>1&&NO.has(ordered[0].id)&&g++<5)ordered.push(ordered.shift())}
     if(!eve&&(pace.night||T.includes("night"))&&ordered.length){const last=ordered[ordered.length-1];let best=null;
       for(const x of pool()){if(!PLANDATA[x.id][3].includes("n"))continue;const tt=apTravel(last.g,x.g,mode,false);if(tt>35)continue;const v=x.s-tt*0.3;if(!best||v>best[0])best=[v,x]}
       if(best){eve=best[1];used.add(eve.id)}}
@@ -3022,7 +3024,10 @@ function apGenerate(){
   missMust.forEach(id=>warn.push(`必去景点「${NODES[id].n}」没能排进去（交通时间过长），可以把节奏改成「密集」或手动加入`));
   return {days,plan,meta,base,baseWhy,warn,opt:JSON.parse(JSON.stringify(AP))};
 }
-function apOrder(arr,B){const rest=[...arr],o=[];let p=B;while(rest.length){let bi=0,bd=1e9;rest.forEach((x,i)=>{const d=km(p,x.g);if(d<bd){bd=d;bi=i}});const x=rest.splice(bi,1)[0];o.push(x);p=x.g}return o}
+function apOrder(arr,B){const rest=[...arr],o=[];let p=B;while(rest.length){let bi=0,bd=1e9;rest.forEach((x,i)=>{const d=km(p,x.g);if(d<bd){bd=d;bi=i}});const x=rest.splice(bi,1)[0];o.push(x);p=x.g}
+  const L=a=>{let s=0,q=B;a.forEach(x=>{s+=km(q,x.g);q=x.g});return s+km(q,B)};let best=L(o),imp=true,g=0;
+  while(imp&&g++<30){imp=false;for(let i=0;i<o.length-1;i++)for(let j=i+1;j<o.length;j++){const c=[...o.slice(0,i),...o.slice(i,j+1).reverse(),...o.slice(j+1)];const l=L(c);if(l<best-1e-6){best=l;o.splice(0,o.length,...c);imp=true}}}
+  return o}
 const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(Math.round(m%60)).padStart(2,"0");
 function apSchedule(d,meta,plan){const M=meta&&meta[d];if(!M)return "";
   return `<ol class="apday">${M.rows.map(r=>r.lunch?`<li class="lunch"><time>${hm(r.at)}</time><span>午餐 · 约 1 小时</span></li>`:`<li${r.eve?' class="eve"':""}><time>${hm(r.at)}</time><span><button class="mylink" data-go="${r.id}"><b>${esc(NODES[r.id].n)}</b></button>${r.ev?`<em class="apev">${esc(r.ev)}</em>`:""}<small>游览约 ${r.dur>=60?(r.dur/60).toFixed(r.dur%60?1:0)+" 小时":r.dur+" 分钟"} · 前往约 ${r.tr} 分钟${r.eve?" · 晚间":""}</small></span></li>`).join("")}</ol>
