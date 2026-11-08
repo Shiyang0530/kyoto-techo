@@ -3068,7 +3068,7 @@ function foodInfo(t){let h="";
   const w=(t.w||[]).filter(x=>NODES[x]);
   if(w.length)h+=`<div class="sec">产地 · 在哪里吃</div><div class="cloud">${w.map(x=>`<button class="tag" data-go="${x}">${esc(NODES[x].n)}</button>`).join("")}</div>`;
   if(t.q){const kw=t.q,pj=PREFJA[t.pref]||"";
-    h+=`<div class="sec">搜索热门餐厅</div><p class="foodlinks"><a href="https://tabelog.com/${t.pref?t.pref+"/":""}rstLst/?sk=${encodeURIComponent(kw)}&SrtT=rt" target="_blank" rel="noopener">食べログ 评分排行 ↗</a><a href="https://www.google.com/maps/search/${encodeURIComponent(kw+" "+pj)}" target="_blank" rel="noopener">Google 地图 ↗</a><a href="https://www.dianping.com/ai-search?keyword=${encodeURIComponent((PREFZH[t.pref]||"")+" "+t.n)}" data-dp="${esc((PREFZH[t.pref]||"")+" "+t.n)}" target="_blank" rel="noopener">大众点评 ↗</a><span class="scnote" style="flex-basis:100%;margin:0">手机上点「大众点评」会自动复制菜名并打开 App，在搜索框粘贴即可。</span><a href="https://www.google.com/search?q=${encodeURIComponent(kw+" "+pj+" 人気店")}" target="_blank" rel="noopener">网页搜索 ↗</a></p><p class="scnote">本书不推荐具体店家。评分和营业信息以各网站为准。</p>`}
+    h+=`<div class="sec">搜索热门餐厅</div><p class="foodlinks"><a href="https://tabelog.com/${t.pref?t.pref+"/":""}rstLst/?sk=${encodeURIComponent(kw)}&SrtT=rt" target="_blank" rel="noopener">食べログ 评分排行 ↗</a><a href="https://www.google.com/maps/search/${encodeURIComponent(kw+" "+pj)}" target="_blank" rel="noopener">Google 地图 ↗</a><a href="https://www.dianping.com/ai-search?keyword=${encodeURIComponent((PREFZH[t.pref]||"")+" "+t.n)}" data-dp="${esc((PREFZH[t.pref]||"")+" "+t.n)}" data-dpk="${esc(t.n)}" target="_blank" rel="noopener">大众点评 ↗</a><span class="scnote" style="flex-basis:100%;margin:0">手机上点「大众点评」会在 App 里直接搜索这道菜，城市按 App 当前所选城市：出发前请先在 App 里把城市切换到京都或大阪，到了日本会自动定位。</span><a href="https://www.google.com/search?q=${encodeURIComponent(kw+" "+pj+" 人気店")}" target="_blank" rel="noopener">网页搜索 ↗</a></p><p class="scnote">本书不推荐具体店家。评分和营业信息以各网站为准。</p>`}
   return h;
 }
 function mlabel(x){const m=x>=13?12:Math.floor(x)>12?1:Math.floor(x);const d=x-Math.floor(x);return m+"月"+(d<0.34?"上旬":d<0.67?"中旬":"下旬")}
@@ -3340,15 +3340,13 @@ $("#tbPlan").onclick=e=>{e.stopPropagation();go(cur==="plan"?"mytags":"plan")};
 })();
 
 
-/* 大众点评：App 不支持带关键词跳转，手机上先复制关键词再打开 App；未安装时改开网页版 */
-document.addEventListener("click",async e=>{const a=e.target.closest("a[data-dp]");if(!a)return;
+/* 大众点评：手机上用 App 搜索菜名（城市按 App 当前所选城市），约 2 秒内没跳走就改开网页版 */
+document.addEventListener("click",e=>{const a=e.target.closest("a[data-dp]");if(!a)return;
   if(!matchMedia("(pointer:coarse)").matches)return;
-  e.preventDefault();const web=a.href,kw=a.dataset.dp;let copied=false;
-  try{await navigator.clipboard.writeText(kw);copied=true}catch(_){}
-  const t=document.createElement("div");t.className="dptoast";t.textContent=copied?`已复制「${kw}」，在大众点评的搜索框里粘贴即可`:`请在大众点评里搜索「${kw}」`;document.body.appendChild(t);setTimeout(()=>t.remove(),4500);
-  let left=false;const onHide=()=>{if(document.hidden)left=true};document.addEventListener("visibilitychange",onHide);
-  setTimeout(()=>{location.href="dianping://"},600);
-  setTimeout(()=>{document.removeEventListener("visibilitychange",onHide);if(!left&&!document.hidden){const w=window.open(web,"_blank");if(!w)location.href=web}},2400)},true);
+  e.preventDefault();const web=a.href,kw=a.dataset.dpk||a.dataset.dp;let left=false;const onHide=()=>{if(document.hidden)left=true};
+  document.addEventListener("visibilitychange",onHide);
+  location.href="dianping://searchshoplist?keyword="+encodeURIComponent(kw);
+  setTimeout(()=>{document.removeEventListener("visibilitychange",onHide);if(!left&&!document.hidden){const w=window.open(web,"_blank");if(!w)location.href=web}},2000)},true);
 })();
 </script>
 
