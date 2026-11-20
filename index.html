@@ -723,6 +723,7 @@ body.lbxon{overflow:hidden}
 .gx{display:flex;flex-direction:column;gap:6px;font-size:13px}.gxh{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.05em}
 .gxr{display:grid;grid-template-columns:7.5em 1fr;gap:10px}.gxr>b,.gxr>.term{justify-self:start}.gxr span{color:var(--ink-2)}
 .gnote{font-size:11.5px;color:var(--muted);margin:8px 0 0}
+.vm.vmplan{height:min(46vh,400px);min-height:260px}.vm.vmday{height:min(36vh,300px);min-height:220px;margin:6px 0 12px}
 </style>
 
 
@@ -1105,8 +1106,8 @@ function vmGeo(){if(VM_GEO)return;VM_GEO=true;try{if(navigator.geolocation)navig
 function vmOriOn(e){const h=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.absolute&&e.alpha!=null?360-e.alpha:null);if(h!=null){VM_HEAD=h;VM_LIVE.forEach(f=>f())}}
 function vmOri(){if(VM_ORI)return;VM_ORI=true;try{if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")addEventListener("deviceorientation",vmOriOn)}).catch(()=>{})}else{addEventListener("deviceorientationabsolute",vmOriOn);addEventListener("deviceorientation",vmOriOn)}}catch(e){}}
 function vmIcon(id){const u=typeof VMICON!=="undefined"&&VMICON[id];if(!u)return null;if(!(id in VM_ICON)){const im=new Image();im.onload=()=>VM_LIVE.forEach(f=>f());im.onerror=()=>{VM_ICON[id]=null};im.src=u;VM_ICON[id]=im}return VM_ICON[id]}
-function vmMountAll(){document.querySelectorAll("#L .vm[data-vm]:not([data-ready])").forEach(h=>{h.dataset.ready=1;const k=h.dataset.vm,M=VMAPS[k];if(!M)return;
-  const go=D=>{try{let plan=null;try{plan=h.dataset.plan?JSON.parse(h.dataset.plan):null}catch(e){}vmMount(h,D,{key:k,focus:h.dataset.focus||"",plan})}catch(e){console.error("vmap",e);h.innerHTML='<p class="scnote">地图加载失败</p>'}};
+function vmMountAll(){document.querySelectorAll("#L .vm[data-vm]:not([data-ready]),#R .vm[data-vm]:not([data-ready])").forEach(h=>{h.dataset.ready=1;const k=h.dataset.vm,M=VMAPS[k];if(!M)return;
+  const go=D=>{try{let plan=null;try{plan=h.dataset.plan?JSON.parse(h.dataset.plan):null}catch(e){}vmMount(h,D,{key:k,focus:h.dataset.focus||"",plan,seq:!!h.dataset.seq})}catch(e){console.error("vmap",e);h.innerHTML='<p class="scnote">地图加载失败</p>'}};
   if(VM_CACHE[M.u])go(VM_CACHE[M.u]);else fetch(M.u).then(r=>r.json()).then(D=>{VM_CACHE[M.u]=D;if(h.isConnected)go(D)}).catch(()=>{h.innerHTML='<p class="scnote">地图需要联网下载一次；离线时请先在联网状态下打开本页</p>'})})}
 const VM_KEYOF=()=>{if(VM_KEYOF.m)return VM_KEYOF.m;const m={};for(const k in (typeof NID!=="undefined"?NID:{}))m[String(NID[k])]=k;return VM_KEYOF.m=m};
 function vmMount(host,D,opt){
@@ -1129,7 +1130,7 @@ function vmMount(host,D,opt){
   const FIL=SP.some(s=>stOf(s));
   const Z_OV=D.zov!=null?D.zov:620;let W=0,H=0,dpr=1,sc=0,tx=0,ty=0,hits=[],css={},sel=opt.focus?SP.find(s=>s.key===opt.focus&&s.lod==="de")||null:null,mode="transit",hinted=false;
   const readCss=()=>{const s=getComputedStyle(host);for(const k of ["land","grounds","forest","bldg","bedge","bshadow","foot","tree","vign","card","navy","text","muted","water","wedge","park","pedge","road","rcase","lab","halo","line","major"])css[k]=s.getPropertyValue("--vm-"+k).trim()};
-  const fit=()=>{if(PLS&&SP.length){const xs=SP.map(s=>s.x),ys=SP.map(s=>s.y),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),pw=Math.max(x1-x0,1500),ph=Math.max(y1-y0,1500);sc=Math.min(W/(pw*1.35),H/(ph*1.35));tx=W/2-(x0+x1)/2*sc;ty=H/2+(y0+y1)/2*sc;return}sc=Math.min(W/D.w,H/D.h)*1.15;tx=(W-D.w*sc)/2;ty=(H+D.h*sc)/2;if(sel){sc=Z_OV?Math.max(sc,Z_OV/1000*1.25):sc*2.2;tx=W/2-sel.x*sc;ty=H/2+sel.y*sc}};
+  const fit=()=>{if(PLS&&SP.length){const xs=SP.map(s=>s.x),ys=SP.map(s=>s.y),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),pw=Math.max(x1-x0,1500),ph=Math.max(y1-y0,1500);sc=Math.min(W/(pw*1.45),(H-60)/(ph*1.3));tx=W/2-(x0+x1)/2*sc;ty=(H-24)/2+(y0+y1)/2*sc;return}sc=Math.min(W/D.w,H/D.h)*1.15;tx=(W-D.w*sc)/2;ty=(H+D.h*sc)/2;if(sel){sc=Z_OV?Math.max(sc,Z_OV/1000*1.25):sc*2.2;tx=W/2-sel.x*sc;ty=H/2+sel.y*sc}};
   let VB=[0,0,0,0];const setVB=()=>{VB=[(-tx)/sc,(ty-H)/sc,(W-tx)/sc,ty/sc]};
   let AX=1,BX=0,BY=0;   // 上级地图的坐标换算到本图（同为等距投影，只差比例和平移）
   const path=(a,close)=>{const b=a.bb;if(b&&(AX*b[2]+BX<VB[0]||AX*b[0]+BX>VB[2]||b[3]+BY<VB[1]||b[1]+BY>VB[3]))return;ctx.moveTo((AX*a[0]+BX)*sc+tx,ty-(a[1]+BY)*sc);for(let i=2;i<a.length;i+=2)ctx.lineTo((AX*a[i]+BX)*sc+tx,ty-(a[i+1]+BY)*sc);if(close)ctx.closePath()};
@@ -1250,13 +1251,13 @@ function vmMount(host,D,opt){
       ctx.save();ctx.translate(X,Y);ctx.rotate(a);ctx.lineWidth=3;ctx.strokeStyle=css.halo;ctx.strokeText(l.t,-w/2,4);ctx.fillStyle=st?css.muted:css.lab;ctx.fillText(l.t,-w/2,4);ctx.restore()}
     if(PLS){for(const d of PLS){const P=d.pts.map(s=>[s.x*sc+tx,ty-s.y*sc]);if(P.length>1){ctx.beginPath();P.forEach((q,j)=>j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.strokeStyle=css.card;ctx.lineWidth=4.5;ctx.setLineDash([]);ctx.stroke();ctx.strokeStyle=d.c;ctx.lineWidth=2.4;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([])}}
       for(const d of PLS)for(const s of d.pts){const X=s.x*sc+tx,Y=ty-s.y*sc,on=sel===s;ctx.beginPath();ctx.arc(X,Y,on?11:9,0,7);ctx.fillStyle=s.pc;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle="#fff";ctx.stroke();
-        ctx.fillStyle="#fff";ctx.font='700 10.5px "Noto Sans SC",sans-serif';const t=String(s.pn),w=ctx.measureText(t).width;ctx.fillText(t,X-w/2,Y+3.8);hits.push([X-12,Y-12,X+12,Y+12,s]);
-        if(z>2600||on){ctx.font='600 11.5px "Noto Serif SC","Songti SC",serif';const tw=ctx.measureText(s.t).width;ctx.lineWidth=3;ctx.strokeStyle=css.halo;ctx.strokeText(s.t,X+13,Y+4);ctx.fillStyle=css.text;ctx.fillText(s.t,X+13,Y+4)}}}
+        ctx.fillStyle="#fff";ctx.font='700 10.5px "Noto Sans SC",sans-serif';const t=String(opt.seq?s.pj:s.pn),w=ctx.measureText(t).width;ctx.fillText(t,X-w/2,Y+3.8);hits.push([X-12,Y-12,X+12,Y+12,s]);
+        if(opt.seq||z>2600||on){ctx.font='600 11.5px "Noto Serif SC","Songti SC",serif';const tw=ctx.measureText(s.t).width;ctx.lineWidth=3;ctx.strokeStyle=css.halo;ctx.strokeText(s.t,X+13,Y+4);ctx.fillStyle=css.text;ctx.fillText(s.t,X+13,Y+4)}}}
     drawMe();
     const m=[50,100,200,500,1000,2000,5000,10000,20000,50000].find(v=>v*sc>56)||50000;ctx.strokeStyle=css.text;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(12,H-26);ctx.lineTo(12+m*sc,H-26);ctx.moveTo(12,H-30);ctx.lineTo(12,H-22);ctx.moveTo(12+m*sc,H-30);ctx.lineTo(12+m*sc,H-22);ctx.stroke();
     ctx.font="11px sans-serif";ctx.fillStyle=css.text;ctx.fillText(m>=1000?m/1000+" 公里":m+" 米",16,H-32)}
   let raf=0;const req=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;draw();VM_VIEW[VK]={sc,tx,ty,W}})};
-  const VK=opt.key+"|"+(opt.focus||"");const resize=()=>{const r=host.getBoundingClientRect();if(!r.width)return;dpr=Math.min(devicePixelRatio||1,2);const first=!W;W=r.width;H=r.height;cv.width=tcv.width=Math.round(W*dpr);cv.height=tcv.height=Math.round(H*dpr);if(first){const v=VM_VIEW[VK];if(v&&Math.abs(v.W-W)<2){sc=v.sc;tx=v.tx;ty=v.ty}else fit()}else if(!sc)fit();draw()};
+  const VK=opt.key+"|"+(opt.focus||"")+(opt.plan?"|plan:"+opt.plan.map(d=>d.p.map(q=>q[0]).join(",")).join(";"):"");const resize=()=>{const r=host.getBoundingClientRect();if(!r.width)return;dpr=Math.min(devicePixelRatio||1,2);const first=!W;W=r.width;H=r.height;cv.width=tcv.width=Math.round(W*dpr);cv.height=tcv.height=Math.round(H*dpr);if(first){const v=VM_VIEW[VK];if(v&&Math.abs(v.W-W)<2){sc=v.sc;tx=v.tx;ty=v.ty}else fit()}else if(!sc)fit();draw()};
   const zoomAt=(f,cx,cy)=>{const E=ext(),mn=bm==="off"?Math.min(W/(E[2]-E[0]),H/(E[3]-E[1]))*0.6:0.0005;const ns=Math.max(mn,Math.min(4,sc*f));f=ns/sc;tx=cx-(cx-tx)*f;ty=cy-(cy-ty)*f;sc=ns;req()};
   host.setAttribute("data-noswipe","");
   let moved=false;const rel=e=>{const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
@@ -1829,7 +1830,7 @@ function planMapHtml(ds){let lines="",mk="";const all=[];ds.forEach((d,i)=>{cons
 let x0=Math.min(...all.map(p=>p[0])),x1=Math.max(...all.map(p=>p[0])),y0=Math.min(...all.map(p=>p[1])),y1=Math.max(...all.map(p=>p[1]));let w=Math.max(x1-x0+80,110),h=Math.max(y1-y0+70,w*440/600);w=Math.max(w,h*600/440);h=w*440/600;const fx=Math.max(0,Math.min(600-w,(x0+x1)/2-w/2)),fy=Math.max(0,Math.min(440-h,(y0+y1)/2-h/2));
 if(CFG.feat.vmap&&typeof VMAPS!=="undefined"&&VMAPS[BOOK.id]&&typeof PLANDATA!=="undefined"){   /* 有矢量总图的书：行程画在矢量地图上（与景点导览图同一模块） */
   const pl=ds.map((d,i)=>({c:DAYC[i%DAYC.length],p:(PLAN[d]||[]).filter(id=>PLANDATA[id]&&NODES[id]).map(id=>[id,PLANDATA[id][0],PLANDATA[id][1]])}));
-  return `<div class="sec">行程地图</div><div class="vm vmplan" data-vm="${BOOK.id}" data-plan="${esc(JSON.stringify(pl))}"></div><div class="pmlg">${ds.map((d,i)=>`<button data-planmap="${d}" title="只看这一天"><i style="background:${DAYC[i%DAYC.length]}"></i>第${i+1}天 · ${PLAN[d].length} 处</button>`).join("")}</div><p class="scnote">圆点颜色代表日期，数字是第几天，虚线按当天顺序连接；点圆点可进入景点页或导航，点下方的日期只看那一天。</p>`}
+  return `<div class="sec">行程地图</div><div class="vm vmplan" data-vm="${vmHostFor(ds.flatMap(d=>PLAN[d]||[]))}" data-plan="${esc(JSON.stringify(pl))}"></div><div class="pmlg">${ds.map((d,i)=>`<button data-planmap="${d}" title="只看这一天"><i style="background:${DAYC[i%DAYC.length]}"></i>第${i+1}天 · ${PLAN[d].length} 处</button>`).join("")}</div><p class="scnote">圆点颜色代表日期，数字是第几天，虚线按当天顺序连接；点圆点可进入景点页或导航，点下方的日期只看那一天。</p>`}
 return `<div class="sec">行程地图</div><svg class="map planall" viewBox="0 0 600 440" data-fit="${fx.toFixed(1)} ${fy.toFixed(1)} ${Math.min(600,w).toFixed(1)}" role="img" aria-label="行程地图"><rect width="600" height="440" style="fill:var(--land)"/>${(typeof PLANBG!=="undefined"?PLANBG:BOOK.bg||"").replace("__HY__",HYPSO)}${lines}${mk}</svg><div class="pmlg">${ds.map((d,i)=>`<button data-planmap="${d}" title="只看这一天"><i style="background:${DAYC[i%DAYC.length]}"></i>第${i+1}天 · ${PLAN[d].length} 处</button>`).join("")}</div><p class="scnote">圆点颜色代表日期，数字是第几天，虚线按当天顺序连接；点圆点进入景点页，点下方的日期只看那一天。</p>`}
 function syncBack(){const bb=document.getElementById("backBtn");if(!bb)return;const h=[...HIST].reverse().find(r=>r!==cur);bb.disabled=!h;let nm="";try{const q=h&&parseRoute(h);nm=q&&q.node?q.node.n:(h==="plan"?"旅行计划":h==="mytags"?"我的标签":"上一个页面")}catch(e){nm="上一个页面"}bb.title=h?"回到："+nm:"还没有浏览过其他页面"}
 const LVN={e:"轻松",m:"适中",h:"进阶"};
@@ -1946,13 +1947,18 @@ function termIndex(){
   return [L,R];
 }
 function lca(ids){const ch=id=>{const a=[];let n=NODES[id];while(n){a.unshift(n);n=n.parent}return a};const cs=ids.map(ch);let i=0;while(cs.every(c=>c[i]&&c[i]===cs[0][i]))i++;let n=cs[0][Math.max(0,i-1)]||BOOK;if(!n.c.length&&n.parent)n=n.parent;if(ids.length===1&&NODES[ids[0]].parent)n=NODES[ids[0]].parent;return n}
+/* 行程用的地图：取能涵盖这些景点的最低一级、并且有矢量地图的上级（规范第二部分 7：地图跟等级走），范围外由上级地图接着画 */
+function vmHostFor(ids){ids=(ids||[]).filter(id=>NODES[id]);if(!ids.length||typeof VMAPS==="undefined")return BOOK.id;let n=lca(ids);while(n&&!VMAPS[n.id])n=n.parent;return n&&VMAPS[n.id]?n.id:BOOK.id}
+function dayMapHtml(d,i){if(!CFG.feat.vmap||typeof VMAPS==="undefined"||typeof PLANDATA==="undefined")return "";const ids=(PLAN[d]||[]).filter(id=>PLANDATA[id]&&NODES[id]);if(!ids.length)return "";
+  const pl=[{c:DAYC[i%DAYC.length],p:ids.map(id=>[id,PLANDATA[id][0],PLANDATA[id][1]])}];
+  return `<div class="vm vmplan vmday" data-vm="${vmHostFor(ids)}" data-seq="1" data-plan="${esc(JSON.stringify(pl))}"></div>`}
 function planPages(){
   const ds=planDates();
   const L=`<span class="eyebrow">个人</span><div class="tagtitle">旅行计划</div>${pvBar()}${CFG.feat.planMap&&planDates().length?planMapHtml(planDates()):""}
   <p style="color:var(--ink-2)">在任意景点页点「＋ 加入我的行程」，选好行程和日期，景点就会按日期排进这张行程单；也可以在每天下方的输入框直接搜索添加。用 ↑↓ 调整顺序，手机上向左滑可以删除（电脑上鼠标移上去点「删除」），时间会按顺序自动重算；点「在地图上看」会打开能涵盖当天所有景点的地图，并只显示当天的景点。地图上方的筛选里也可以直接选「第 N 天」。</p>
   ${ds.length?`<div class="plandays">${ds.map((d,i)=>`<div class="pday"><a href="#pd-${d}" data-pjump="${d}"><b>第${i+1}天</b><span>${fmtD(d,true)}</span><em>${PLAN[d].length} 处</em></a><button class="btn sm" data-planmap="${d}">在地图上看</button></div>`).join("")}</div>`:'<p style="color:var(--muted)">还没有安排任何日期。</p>'}
   <p style="margin-top:14px"><button class="btn" data-route="mytags">导出 / 导入（在「我的标签」页）</button> <button class="btn" data-planclear="1">${PLAN_CLEAR?"再点一次确认清空":"清空行程"}</button></p><span class="folio">PLAN</span>`;
-  const R=`<div class="kicker"><span class="kind">行程单</span><span>${ds.length?fmtD(ds[0])+" – "+fmtD(ds[ds.length-1])+" · 共 "+ds.length+" 天":"空"}</span></div><h1>旅行计划</h1>${ds.length?ds.map((d,i)=>`<div class="sec" id="pd-${d}">第${i+1}天 · ${fmtD(d,true)} · ${PLAN[d].length} 处</div>${planDayHtml(d)}`).join(""):`<p class="intro" style="margin-top:14px">这里还是空的。翻到任何一个景点，点标题下方的「＋ 加入我的行程」，选好日期就会排进来。</p>`}<span class="folio">PLAN</span>`;
+  const R=`<div class="kicker"><span class="kind">行程单</span><span>${ds.length?fmtD(ds[0])+" – "+fmtD(ds[ds.length-1])+" · 共 "+ds.length+" 天":"空"}</span></div><h1>旅行计划</h1>${ds.length?ds.map((d,i)=>`<div class="sec" id="pd-${d}">第${i+1}天 · ${fmtD(d,true)} · ${PLAN[d].length} 处</div>${dayMapHtml(d,i)}${planDayHtml(d)}`).join(""):`<p class="intro" style="margin-top:14px">这里还是空的。翻到任何一个景点，点标题下方的「＋ 加入我的行程」，选好日期就会排进来。</p>`}<span class="folio">PLAN</span>`;
   return [L,R];
 }
 let PLAN_CLEAR=false;
